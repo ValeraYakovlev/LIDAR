@@ -97,6 +97,7 @@ def render(records, bag, dpi=120):
     alphas = np.array([r["alpha"] for r in records], dtype=float)
     xs = np.array([r["idx"] for r in records], dtype=float)
     arc = np.array([r["kind"] == "arc" for r in records])
+    no_anchor = np.array([r["kind"] is None for r in records])
     lim = float(np.nanmax(np.abs(alphas))) if np.any(np.isfinite(alphas)) else 1.0
     lim = max(lim * 1.2, 0.5)
 
@@ -142,6 +143,11 @@ def render(records, bag, dpi=120):
         ax_k.axhline(0, c="gray", lw=0.8)
         ax_k.plot(xs, alphas, c="silver", lw=1.0)
         ax_k.scatter(xs[arc], alphas[arc], s=5, c="limegreen", zorder=3)
+        # Кадры без опоры по рельсам отмечаются явно: иначе на ленте они дают
+        # просто разрыв, неотличимый от "тоннель прямой".
+        if no_anchor.any():
+            ax_k.scatter(xs[no_anchor], np.full(no_anchor.sum(), -lim * 0.82),
+                         s=18, c="crimson", marker="|", zorder=3)
         ax_k.axvline(r["idx"], c="crimson", lw=1.4)
         ax_k.set_xlim(xs.min(), xs.max())
         ax_k.set_ylim(-lim, lim)
@@ -149,8 +155,8 @@ def render(records, bag, dpi=120):
         ax_k.set_yticklabels([f"{lim:.1f}\nналево", "0", f"{lim:.1f}\nнаправо"], fontsize=6.5)
         ax_k.tick_params(axis="x", labelsize=7)
         ax_k.set_xlabel("кадр прогона", fontsize=7.5)
-        ax_k.set_title("увод пути вбок на 40 м вперёд, м (зелёное — распознано как дуга)",
-                       fontsize=7.5)
+        ax_k.set_title("увод пути вбок на 40 м вперёд, м\n"
+                       "зелёное — дуга, красные штрихи — нет опоры", fontsize=7.0)
 
         canvas.draw()
         buf = np.asarray(canvas.buffer_rgba())[:, :, :3]
