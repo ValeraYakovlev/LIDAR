@@ -1,4 +1,5 @@
-from .loader import load_frame, iter_frames, iter_selected_frames, bag_path, DEFAULT_BAGS, POINT_DTYPE
+from .loader import (load_frame, iter_frames, iter_selected_frames, frame_count, bag_path,
+                     DEFAULT_BAGS, POINT_DTYPE)
 from .detector import (
     find_groove_and_rails,
     analyze_frame,
@@ -39,7 +40,7 @@ from .tunnel_frame import (
 )
 
 __all__ = [
-    "load_frame", "iter_frames", "iter_selected_frames", "bag_path", "DEFAULT_BAGS", "POINT_DTYPE",
+    "load_frame", "iter_frames", "iter_selected_frames", "frame_count", "bag_path", "DEFAULT_BAGS", "POINT_DTYPE",
     "fit_track_frame", "to_track_coords", "fit_tunnel_geometry", "wall_x",
     "geometry_formula", "axis_formula", "tunnel_center_coeffs", "WALL_DEPTH_BINS", "eval_fit", "slope_from_fit",
     "find_groove_and_rails", "analyze_frame", "classify_points", "DEFAULT_DEPTH_BINS",

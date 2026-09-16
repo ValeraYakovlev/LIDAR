@@ -44,6 +44,13 @@ def load_frame(bag_dir, frame_idx=None):
     raise IndexError(f"кадр {target} не найден в {bag_dir} (всего кадров: {n})")
 
 
+def frame_count(bag_dir):
+    """Число кадров в bag без чтения самих сообщений (берётся из индекса
+    sqlite) — нужно, чтобы выбрать шаг прохода до начала чтения."""
+    with AnyReader([Path(bag_dir)]) as reader:
+        return reader.connections[0].msgcount
+
+
 def iter_selected_frames(bag_dir, frame_indices):
     """Отдаёт запрошенные кадры за ОДИН проход по bag, в порядке возрастания
     индекса. load_frame пересканирует запись с начала при каждом вызове, поэтому

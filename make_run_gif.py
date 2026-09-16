@@ -8,7 +8,8 @@
 Алгоритм не меняется — используется тот же rail_detection.tunnel_frame.
 
 Запуск:
-    python make_run_gif.py --bag roundT_pressureGate_roundT --stride 2
+    python make_run_gif.py                       # все прогоны
+    python make_run_gif.py --bags roundT_doubleT --stride 2
 """
 
 import argparse
@@ -22,13 +23,19 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 from PIL import Image
 
-from rail_detection import bag_path, fit_tunnel_geometry, iter_frames, to_track_coords, wall_x
+from rail_detection import (DEFAULT_BAGS, bag_path, fit_tunnel_geometry, frame_count,
+                            iter_frames, to_track_coords, wall_x)
 from rail_detection.curvature import eval_fit
-from rail_detection.tunnel_frame import DEPTH_SCALE, V_HI, V_LO
+from rail_detection.tunnel_frame import V_HI, V_LO
 
 DEPTH_MAX = 45.0
 X_LIM = (-6.0, 6.0)
 MAX_GRAY = 14000  # точек на кадр в GIF: больше глазом не различить, а вес растёт
+
+# doubleT_obstacle исключён из DEFAULT_BAGS как нетиповая сцена (стоящий поезд
+# на пути), но для покадрового просмотра он как раз самый интересный — видно,
+# как геометрия ведёт себя при реальном препятствии.
+ALL_BAGS = list(DEFAULT_BAGS) + ["doubleT_obstacle"]
 
 
 def collect(dataset, bag, stride, max_frames=None):
@@ -153,12 +160,41 @@ def render(records, bag, dpi=120):
     return images
 
 
+def build_one(dataset, bag, out_dir, stride, target_frames, fps, max_frames):
+    if stride is None:
+        # Записи различаются по длине втрое (201 против 877 кадров), поэтому
+        # шаг подбирается под целевую длину GIF: иначе один прогон вышел бы
+        # втрое длиннее и тяжелее остальных при той же сути.
+        n = frame_count(bag_path(dataset, bag))
+        stride = max(1, round(n / target_frames))
+    print(f"\n=== {bag} (шаг {stride}) ===")
+    records = collect(dataset, bag, stride, max_frames)
+    if not records:
+        print("  кадры не прочитались")
+        return None
+
+    n_arc = sum(1 for r in records if r["kind"] == "arc")
+    n_none = sum(1 for r in records if r["kind"] is None)
+    print(f"  кадров: {len(records)}, дуга в {n_arc}, без опоры {n_none}")
+
+    images = render(records, bag)
+    path = out_dir / f"run_{bag}.gif"
+    images[0].save(path, save_all=True, append_images=images[1:],
+                   duration=int(1000 / fps), loop=0, optimize=True)
+    size = path.stat().st_size / 1e6
+    print(f"  GIF: {path} ({size:.1f} МБ)")
+    return {"bag": bag, "frames": len(records), "arc": n_arc, "no_anchor": n_none,
+            "stride": stride, "size_mb": size}
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--dataset", default="/Volumes/T7/Dataset")
-    p.add_argument("--bag", default="roundT_pressureGate_roundT")
+    p.add_argument("--bags", nargs="*", default=ALL_BAGS, help="какие прогоны обрабатывать")
     p.add_argument("--out", default="output")
-    p.add_argument("--stride", type=int, default=2, help="брать каждый N-й кадр")
+    p.add_argument("--stride", type=int, default=None,
+                   help="брать каждый N-й кадр (по умолчанию подбирается под --target-frames)")
+    p.add_argument("--target-frames", type=int, default=150, help="желаемая длина GIF в кадрах")
     p.add_argument("--max-frames", type=int, default=None)
     p.add_argument("--fps", type=float, default=10.0)
     a = p.parse_args()
@@ -166,22 +202,17 @@ def main():
     out_dir = Path(a.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Чтение {a.bag} (шаг {a.stride})...")
-    records = collect(a.dataset, a.bag, a.stride, a.max_frames)
-    if not records:
-        print("Кадры не прочитались.")
-        return
+    summary = []
+    for bag in a.bags:
+        got = build_one(a.dataset, bag, out_dir, a.stride, a.target_frames, a.fps, a.max_frames)
+        if got:
+            summary.append(got)
 
-    n_arc = sum(1 for r in records if r["kind"] == "arc")
-    n_none = sum(1 for r in records if r["kind"] is None)
-    print(f"Кадров: {len(records)}, дуга в {n_arc}, без опоры {n_none}")
-
-    print("Отрисовка...")
-    images = render(records, a.bag)
-    path = out_dir / f"run_{a.bag}.gif"
-    images[0].save(path, save_all=True, append_images=images[1:],
-                   duration=int(1000 / a.fps), loop=0, optimize=True)
-    print(f"GIF сохранён: {path}  ({path.stat().st_size / 1e6:.1f} МБ, {len(images)} кадров)")
+    print("\n=== Итог ===")
+    print(f"{'прогон':38s} {'шаг':>4s} {'кадров':>7s} {'дуга':>6s} {'без опоры':>10s} {'МБ':>6s}")
+    for s in summary:
+        print(f"{s['bag']:38s} {s['stride']:4d} {s['frames']:7d} "
+              f"{s['arc']:6d} {s['no_anchor']:10d} {s['size_mb']:6.1f}")
 
 
 if __name__ == "__main__":
