@@ -44,6 +44,30 @@ def load_frame(bag_dir, frame_idx=None):
     raise IndexError(f"кадр {target} не найден в {bag_dir} (всего кадров: {n})")
 
 
+def iter_selected_frames(bag_dir, frame_indices):
+    """Отдаёт запрошенные кадры за ОДИН проход по bag, в порядке возрастания
+    индекса. load_frame пересканирует запись с начала при каждом вызове, поэтому
+    прогон по тестовой выборке (десятки кадров из одного многогигабайтного bag)
+    через неё вырождается в десятки полных чтений файла.
+
+    Отдаёт (frame_idx, points); чтение прекращается после последнего нужного кадра.
+    """
+    want = sorted({int(i) for i in frame_indices})
+    if not want:
+        return
+    last = want[-1]
+    want_set = set(want)
+    bag_dir = Path(bag_dir)
+    with AnyReader([bag_dir]) as reader:
+        conns = reader.connections
+        for i, (conn, ts, rawdata) in enumerate(reader.messages(connections=conns)):
+            if i in want_set:
+                msg = reader.deserialize(rawdata, conn.msgtype)
+                yield i, np.frombuffer(msg.data, dtype=POINT_DTYPE)
+            if i >= last:
+                return
+
+
 def iter_frames(bag_dir, stride=1, max_frames=None):
     """Эффективно проходит по кадрам bag ОДНИМ проходом (в отличие от load_frame,
     которую вызывать много раз для разных кадров дорого — она пересканирует bag

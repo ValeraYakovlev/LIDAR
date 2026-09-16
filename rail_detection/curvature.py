@@ -130,20 +130,41 @@ def fit_straight_or_arc(depths, xs, straight_resid_thresh=0.08, min_points=4,
     return empty
 
 
+def eval_fit(fit, depths):
+    """x(depth) по результату fit_straight_or_arc — единообразно для всех kind,
+    включая кусочный 'transition'. NaN там, где модели нет."""
+    depths = np.asarray(depths, dtype=float)
+    kind = fit.get("kind") if fit else None
+    if kind in ("straight", "arc", "unclear"):
+        return np.polyval(fit["coeffs"], depths)
+    if kind == "transition":
+        cc1, cc2 = fit["coeffs"]
+        return np.where(depths <= fit["split_depth"],
+                        np.polyval(cc1, depths), np.polyval(cc2, depths))
+    return np.full(depths.shape, np.nan)
+
+
+def slope_from_fit(fit, depths):
+    """dx/d(depth) по результату fit_straight_or_arc (для локального курса)."""
+    depths = np.asarray(depths, dtype=float)
+    kind = fit.get("kind") if fit else None
+    if kind in ("straight", "arc", "unclear"):
+        return np.polyval(np.polyder(fit["coeffs"]), depths)
+    if kind == "transition":
+        cc1, cc2 = fit["coeffs"]
+        return np.where(depths <= fit["split_depth"],
+                        np.polyval(np.polyder(cc1), depths),
+                        np.polyval(np.polyder(cc2), depths))
+    return np.zeros(depths.shape)
+
+
 def _heading_deg_from_fit(fit, depth):
     """Локальный курс (град.) по результату fit_straight_or_arc в точке depth —
     работает единообразно для 'straight'/'arc'/'unclear' (один полином) и
     'transition' (кусочно, по своей стороне от split_depth)."""
-    kind = fit.get("kind")
-    if kind in ("straight", "arc", "unclear"):
-        coeffs = fit["coeffs"]
-    elif kind == "transition":
-        cc1, cc2 = fit["coeffs"]
-        coeffs = cc1 if depth <= fit["split_depth"] else cc2
-    else:
+    if fit.get("kind") is None:
         return None
-    slope = np.polyval(np.polyder(coeffs), depth)
-    return float(np.degrees(np.arctan(slope)))
+    return float(np.degrees(np.arctan(float(slope_from_fit(fit, depth)))))
 
 
 def walls_consistent(left_fit, right_fit, depths, heading_tol_deg=3.0):
