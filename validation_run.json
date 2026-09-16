@@ -1,0 +1,558 @@
+{
+ "purpose": "ЗАМОРОЖЕННЫЙ валидационный ПРОГОН — целиком отложен, в разработке не участвует",
+ "bag": "roundT_squareT_pressureGate_squareT",
+ "n_frames_total": 545,
+ "stride": 4,
+ "why_this_run": "самый трудный из чистых записей: 46 кадров из 137 без опоры по рельсам (сплошным блоком в начале), плюс гермозатвор, стрелки и устойчивый поворот",
+ "frozen_before": "любых изменений алгоритма в ветке feature/rails-tied-to-curvature",
+ "test_set": [
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 0
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 4
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 8
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 12
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 16
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 20
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 24
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 28
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 32
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 36
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 40
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 44
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 48
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 52
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 56
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 60
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 64
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 68
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 72
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 76
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 80
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 84
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 88
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 92
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 96
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 100
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 104
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 108
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 112
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 116
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 120
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 124
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 128
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 132
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 136
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 140
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 144
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 148
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 152
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 156
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 160
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 164
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 168
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 172
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 176
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 180
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 184
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 188
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 192
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 196
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 200
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 204
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 208
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 212
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 216
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 220
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 224
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 228
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 232
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 236
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 240
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 244
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 248
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 252
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 256
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 260
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 264
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 268
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 272
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 276
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 280
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 284
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 288
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 292
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 296
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 300
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 304
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 308
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 312
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 316
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 320
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 324
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 328
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 332
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 336
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 340
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 344
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 348
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 352
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 356
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 360
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 364
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 368
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 372
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 376
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 380
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 384
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 388
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 392
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 396
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 400
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 404
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 408
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 412
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 416
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 420
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 424
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 428
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 432
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 436
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 440
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 444
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 448
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 452
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 456
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 460
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 464
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 468
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 472
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 476
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 480
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 484
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 488
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 492
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 496
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 500
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 504
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 508
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 512
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 516
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 520
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 524
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 528
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 532
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 536
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 540
+  },
+  {
+   "bag": "roundT_squareT_pressureGate_squareT",
+   "frame": 544
+  }
+ ]
+}
