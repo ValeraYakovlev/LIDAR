@@ -42,3 +42,59 @@ def load_frame(bag_dir, frame_idx=None):
                 points = np.frombuffer(msg.data, dtype=POINT_DTYPE)
                 return points, n
     raise IndexError(f"кадр {target} не найден в {bag_dir} (всего кадров: {n})")
+
+
+def frame_count(bag_dir):
+    """Число кадров в bag без чтения самих сообщений (берётся из индекса
+    sqlite) — нужно, чтобы выбрать шаг прохода до начала чтения."""
+    with AnyReader([Path(bag_dir)]) as reader:
+        return reader.connections[0].msgcount
+
+
+def iter_selected_frames(bag_dir, frame_indices):
+    """Отдаёт запрошенные кадры за ОДИН проход по bag, в порядке возрастания
+    индекса. load_frame пересканирует запись с начала при каждом вызове, поэтому
+    прогон по тестовой выборке (десятки кадров из одного многогигабайтного bag)
+    через неё вырождается в десятки полных чтений файла.
+
+    Отдаёт (frame_idx, points); чтение прекращается после последнего нужного кадра.
+    """
+    want = sorted({int(i) for i in frame_indices})
+    if not want:
+        return
+    last = want[-1]
+    want_set = set(want)
+    bag_dir = Path(bag_dir)
+    with AnyReader([bag_dir]) as reader:
+        conns = reader.connections
+        for i, (conn, ts, rawdata) in enumerate(reader.messages(connections=conns)):
+            if i in want_set:
+                msg = reader.deserialize(rawdata, conn.msgtype)
+                yield i, np.frombuffer(msg.data, dtype=POINT_DTYPE)
+            if i >= last:
+                return
+
+
+def iter_frames(bag_dir, stride=1, max_frames=None):
+    """Эффективно проходит по кадрам bag ОДНИМ проходом (в отличие от load_frame,
+    которую вызывать много раз для разных кадров дорого — она пересканирует bag
+    с начала при каждом вызове). Отдаёт (frame_idx, points, n_total) по порядку.
+
+    stride: брать каждый stride-й кадр (1 = все подряд).
+    max_frames: остановиться после стольких ОТДАННЫХ кадров (не после стольких
+        просмотренных) — None = пройти всю запись.
+    """
+    bag_dir = Path(bag_dir)
+    yielded = 0
+    with AnyReader([bag_dir]) as reader:
+        conns = reader.connections
+        n = conns[0].msgcount
+        for i, (conn, ts, rawdata) in enumerate(reader.messages(connections=conns)):
+            if i % stride != 0:
+                continue
+            msg = reader.deserialize(rawdata, conn.msgtype)
+            points = np.frombuffer(msg.data, dtype=POINT_DTYPE)
+            yield i, points, n
+            yielded += 1
+            if max_frames is not None and yielded >= max_frames:
+                return

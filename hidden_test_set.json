@@ -1,0 +1,217 @@
+{
+  "seed": 777,
+  "note": "HIDDEN — не смотреть при разработке, только для финальной проверки",
+  "frame_counts": {
+    "doubleT_platform": 345,
+    "roundT_doubleT": 252,
+    "roundT_pressureGate_roundT": 268,
+    "roundT_squareT_pressureGate_squareT": 545,
+    "squareT_platform_squareT_switch": 877
+  },
+  "test_set": [
+    {
+      "bag": "doubleT_platform",
+      "frame": 20
+    },
+    {
+      "bag": "doubleT_platform",
+      "frame": 117
+    },
+    {
+      "bag": "doubleT_platform",
+      "frame": 138
+    },
+    {
+      "bag": "doubleT_platform",
+      "frame": 172
+    },
+    {
+      "bag": "doubleT_platform",
+      "frame": 188
+    },
+    {
+      "bag": "doubleT_platform",
+      "frame": 228
+    },
+    {
+      "bag": "doubleT_platform",
+      "frame": 275
+    },
+    {
+      "bag": "doubleT_platform",
+      "frame": 294
+    },
+    {
+      "bag": "roundT_doubleT",
+      "frame": 114
+    },
+    {
+      "bag": "roundT_doubleT",
+      "frame": 140
+    },
+    {
+      "bag": "roundT_doubleT",
+      "frame": 159
+    },
+    {
+      "bag": "roundT_doubleT",
+      "frame": 171
+    },
+    {
+      "bag": "roundT_doubleT",
+      "frame": 233
+    },
+    {
+      "bag": "roundT_doubleT",
+      "frame": 236
+    },
+    {
+      "bag": "roundT_pressureGate_roundT",
+      "frame": 39
+    },
+    {
+      "bag": "roundT_pressureGate_roundT",
+      "frame": 58
+    },
+    {
+      "bag": "roundT_pressureGate_roundT",
+      "frame": 61
+    },
+    {
+      "bag": "roundT_pressureGate_roundT",
+      "frame": 147
+    },
+    {
+      "bag": "roundT_pressureGate_roundT",
+      "frame": 170
+    },
+    {
+      "bag": "roundT_pressureGate_roundT",
+      "frame": 199
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 1
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 34
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 106
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 109
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 128
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 214
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 273
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 294
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 319
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 346
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 424
+    },
+    {
+      "bag": "roundT_squareT_pressureGate_squareT",
+      "frame": 513
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 11
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 78
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 96
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 151
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 172
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 262
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 281
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 356
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 449
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 461
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 508
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 538
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 559
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 561
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 590
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 624
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 677
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 706
+    },
+    {
+      "bag": "squareT_platform_squareT_switch",
+      "frame": 793
+    }
+  ]
+}
