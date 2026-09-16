@@ -42,7 +42,8 @@ from rail_detection import (
     slope_from_fit,
     to_track_coords,
 )
-from rail_detection.tunnel_frame import V_HI, V_LO, wall_metrics
+from rail_detection.tunnel_frame import (RAIL_FIT_DEPTH, V_HI, V_LO,
+                                         _axis_offset_coeffs, wall_metrics)
 
 MIN_COVERAGE = 0.70
 MAX_LEAK = 0.15
@@ -56,6 +57,26 @@ def side_ok(m):
         and m["leak"] <= MAX_LEAK
         and OFFSET_RANGE[0] <= m["offset"] <= OFFSET_RANGE[1]
     )
+
+
+def axis_holdout_error(res):
+    """Ошибка оси на ОТЛОЖЕННЫХ рельсах — тех, что глубже RAIL_FIT_DEPTH и в
+    подгонке не участвовали. Отвечает на вопрос, ради которого рельсы и
+    увязывались с изгибом тоннеля: предсказывает ли найденная по стенам
+    кривизна, куда на самом деле уходит путь. Метрика стен на это ответить не
+    может — она про границы, а не про ось.
+
+    Возвращает медиану |ошибки| по отложенным срезам либо None.
+    """
+    rd, ru = res.get("rails_all", (np.zeros(0), np.zeros(0)))
+    far = rd > RAIL_FIT_DEPTH
+    if far.sum() < 2:
+        return None
+    pred = np.polyval(_axis_offset_coeffs(res["shape"]), rd[far])
+    err = np.abs(ru[far] - pred)
+    # Одиночные грубые промахи детектора рельс (> 1 м) — не ошибка оси
+    err = err[err < 1.0]
+    return float(np.median(err)) if len(err) else None
 
 
 def _band(points, res):
@@ -136,20 +157,23 @@ def iter_test_frames(dataset, test_set):
             yield bag, idx, points
 
 
-def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None):
+def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
+             use_rails=True, rail_roles=None):
     with open(test_set_path) as f:
         test_set = json.load(f)["test_set"]
 
     stats = {k: {"both": 0, "any": 0} for k in ("new", "combined", "density")}
     n_frames, n_no_frame = 0, 0
     fails = []
+    axis_errors = []
 
     for bag, idx, points in iter_test_frames(dataset, test_set):
         n_frames += 1
-        res = fit_tunnel_geometry(points, WALL_DEPTH_BINS)
+        res = fit_tunnel_geometry(points, WALL_DEPTH_BINS, use_rails=use_rails,
+                                  **({} if rail_roles is None else {'rail_roles': rail_roles}))
         if res is None:
             n_no_frame += 1
-            fails.append((bag, idx, "не удалось построить опору по рельсам"))
+            fails.append((bag, idx, "не удалось построить опору"))
             continue
 
         m_new = measure_new(points, res)
@@ -168,6 +192,10 @@ def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None):
                 return "нет" if s is None else f"cov={s['coverage']:.2f} leak={s['leak']:.3f} u={s['offset']:.2f}"
             fails.append((bag, idx, f"L: {d(m_new.get('left'))} | R: {d(m_new.get('right'))}"))
 
+        ae = axis_holdout_error(res)
+        if ae is not None:
+            axis_errors.append(ae)
+
         if collect is not None:
             collect.append((bag, idx, points, res, m_new))
 
@@ -180,8 +208,13 @@ def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None):
             s = stats[k]
             print(f"  {names[k]:34s} обе стены: {s['both']:3d}/{n_frames} = {100*s['both']/n_frames:5.1f}%"
                   f"   хотя бы одна: {s['any']:3d}/{n_frames} = {100*s['any']/n_frames:5.1f}%")
+        if axis_errors:
+            a = np.array(axis_errors)
+            print(f"  ось на отложенных рельсах (>{RAIL_FIT_DEPTH:.0f} м): медиана "
+                  f"{np.median(a):.3f} м, 90-й перцентиль {np.percentile(a, 90):.3f} м "
+                  f"({len(a)} кадров)")
         if n_no_frame:
-            print(f"  (в {n_no_frame} кадрах не построилась опора по рельсам)")
+            print(f"  (в {n_no_frame} кадрах не построилась опора)")
         print("\nКадры, где новый метод не дал обе стены:")
         for b, i, r in fails[:25]:
             print(f"  {b} #{i}: {r}")
@@ -195,5 +228,10 @@ if __name__ == "__main__":
     p.add_argument("--dataset", default="/Volumes/T7/Dataset")
     p.add_argument("--test-set", default="test_set.json")
     p.add_argument("--compare", action="store_true", help="мерить теми же метриками старые методы")
+    p.add_argument("--rail-roles", nargs="*", default=None,
+                   help="аблация: какие роли играют рельсы (floor axis rows)")
+    p.add_argument("--no-rails", action="store_true",
+                   help="стресс-проверка: отключить рельсы и мерить безрельсовый путь")
     a = p.parse_args()
-    evaluate(a.dataset, a.test_set, compare=a.compare)
+    evaluate(a.dataset, a.test_set, compare=a.compare, use_rails=not a.no_rails,
+             rail_roles=a.rail_roles)

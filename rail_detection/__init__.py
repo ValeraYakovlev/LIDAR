@@ -29,8 +29,11 @@ from .curvature import (
 )
 from .walls import find_wall_positions, analyze_walls, fit_wall, combined_wall_fit, height_band_mask
 from .tunnel_frame import (
+    rail_samples,
+    floor_profile,
+    side_offset,
     tunnel_center_coeffs,
-    fit_track_frame,
+
     to_track_coords,
     fit_tunnel_geometry,
     wall_x,
@@ -41,7 +44,7 @@ from .tunnel_frame import (
 
 __all__ = [
     "load_frame", "iter_frames", "iter_selected_frames", "frame_count", "bag_path", "DEFAULT_BAGS", "POINT_DTYPE",
-    "fit_track_frame", "to_track_coords", "fit_tunnel_geometry", "wall_x",
+    "rail_samples", "floor_profile", "side_offset", "to_track_coords", "fit_tunnel_geometry", "wall_x",
     "geometry_formula", "axis_formula", "tunnel_center_coeffs", "WALL_DEPTH_BINS", "eval_fit", "slope_from_fit",
     "find_groove_and_rails", "analyze_frame", "classify_points", "DEFAULT_DEPTH_BINS",
     "robust_centerline",
