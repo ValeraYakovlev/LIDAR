@@ -70,6 +70,13 @@ WALL_DEPTH_BINS = (
     + [(33, 37), (37, 42)]
 )
 
+# Срезы ТОЛЬКО для замера дальности наблюдения. В подгонку они не идут
+# намеренно: замер показал, что дальние разрежённые срезы в подгонке ничего не
+# добавляют в среднем и заметно вредят на станциях, где за 40 м начинается
+# открытое пространство. Но ответить "докуда геометрию вообще видно" без них
+# нельзя, поэтому они считаются отдельно и только как диагностика.
+REACH_DEPTH_BINS = [(42, 48), (48, 55), (55, 63), (63, 72), (72, 85), (85, 100)]
+
 V_LO, V_HI = 0.2, 1.1      # полоса высот над головкой рельса (см. docstring)
 U_MIN, U_MAX = 1.0, 6.5    # коридор поиска стены вбок от оси пути, м
 NEAR_DEPTH = 20.0          # "ближняя зона": там рельсы видно надёжно
@@ -83,6 +90,8 @@ RAIL_FIT_DEPTH = 15.0      # м: глубже рельсы в подгонку �
 MAX_WIDTH_BREAKS = 2       # сколько разрывов ширины разрешено на сторону
 MIN_WIDTH_STEP = 0.25      # м: меньший скачок ширины не считается разрывом
 WIDTH_GAIN = 0.80          # разрыв обязан сбить среднюю |невязку| во столько раз
+NEAR_GATE_U = 3.0          # м: ширина ближних ворот, если они включены (по умолчанию выключены)
+NEAR_GATE_MAX_DEPTH = 25.0 # м: глубже ворота не ставятся, там ось уже не так точна
 
 
 def rail_samples(points, depth_bins=DEFAULT_DEPTH_BINS):
@@ -192,7 +201,7 @@ def to_track_coords(x, y, z, frame):
 
 
 def _side_envelope(d, u, side_sign, depth_bins, u_min=U_MIN, u_max=U_MAX,
-                   min_points=12, pct=97.0):
+                   min_points=12, pct=97.0, gate_depth=0.0, gate_u=NEAR_GATE_U):
     """Шаг 2: по каждому срезу — боковая граница тоннеля на этой стороне.
 
     Оценка — ВЫСОКИЙ ПЕРЦЕНТИЛЬ |u| (не максимум и не пик плотности). Максимум
@@ -202,6 +211,16 @@ def _side_envelope(d, u, side_sign, depth_bins, u_min=U_MIN, u_max=U_MAX,
     доходит основная масса точек" — и по построению не боится нескольких
     промахов.
 
+    gate_depth: до этой глубины кандидаты ограничиваются gate_u метрами вбок.
+        Смысл: там, где желоб распознан, положение пути известно точно, а тоннель
+        вблизи поезда физически узкий — всё, что дальше трёх метров, это не
+        стена, а настил платформы, ниша или соседний путь, то есть помеха.
+
+        Ворота МЯГКИЕ: если внутри них опоры нет вовсе, берётся полный коридор.
+        Без этого на двухпутном участке, где тоннель действительно раскрыт на
+        6 м с самого начала, на глубине ворот возникал бы выдуманный скачок
+        ширины — ровно тот артефакт, ради борьбы с которым ворота и ставятся.
+
     Возвращает (depths, offsets) — по одному значению на срез.
     """
     su = side_sign * u
@@ -209,6 +228,10 @@ def _side_envelope(d, u, side_sign, depth_bins, u_min=U_MIN, u_max=U_MAX,
     depths, offsets = [], []
     for lo, hi in depth_bins:
         sl = band & (d >= lo) & (d < hi)
+        if (lo + hi) / 2 <= gate_depth:
+            gated = sl & (su <= gate_u)
+            if gated.sum() >= min_points:
+                sl = gated
         if sl.sum() < min_points:
             continue
         depths.append((lo + hi) / 2)
@@ -391,7 +414,7 @@ def _segment_width(depths, resid, max_breaks=None, min_seg=3,
     return edges, best_vals
 
 
-def _fit_parallel_walls(data, rails, window=0.55):
+def _fit_parallel_walls(data, rails, window=0.55, prior=None):
     """Шаг 3: согласованная по всему кадру форма тоннеля.
 
     Опора — ближняя зона: там точек на порядок больше и оценка среза устойчива,
@@ -416,8 +439,10 @@ def _fit_parallel_walls(data, rails, window=0.55):
         if len(d) < 4:
             seeded[name] = (d, o, np.zeros(len(d), dtype=bool))
             continue
-        near = d <= NEAR_DEPTH
-        seed = float(np.median(o[near])) if near.sum() >= 2 else float(np.median(o))
+        seed = _prior_seed(prior, name, o, window)
+        if seed is None:
+            near = d <= NEAR_DEPTH
+            seed = float(np.median(o[near])) if near.sum() >= 2 else float(np.median(o))
         seeded[name] = (d, o, np.abs(o - seed) < window)
 
     rd, ru = rails
@@ -444,6 +469,25 @@ def _fit_parallel_walls(data, rails, window=0.55):
             break
         segs, edges, seeded = new_segs, new_edges, new_seeded
     return shape, seeded, rail_state
+
+
+def _prior_seed(prior, side, offsets, window, min_support=3):
+    """Полуширина с прошлого кадра как стартовое приближение — но только если
+    точки ТЕКУЩЕГО кадра её подтверждают.
+
+    Проверка обязательна: иначе на въезде в станцию, где тоннель реально
+    меняется, прошлое значение утащило бы согласование в пустоту и держало бы
+    его там кадр за кадром. Подсказка помогает выбрать правильное скопление,
+    когда их несколько, и молча уступает, когда её скопления больше нет.
+    """
+    if prior is None:
+        return None
+    w = prior.get("widths", {}).get(side)
+    if w is None or not np.isfinite(w):
+        return None
+    if int(np.sum(np.abs(offsets - w) < window)) < min_support:
+        return None
+    return float(w)
 
 
 def _converge(seeded, rail_state, segs, window):
@@ -611,7 +655,8 @@ RAIL_ROLES = frozenset({"floor", "axis", "rows"})
 
 
 def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI,
-                        use_rails=True, rail_roles=RAIL_ROLES):
+                        use_rails=True, rail_roles=RAIL_ROLES, prior=None,
+                        near_gate=None):
     """Полный проход: опора -> координаты пути -> общая форма тоннеля.
 
     use_rails=False принудительно отключает рельсы целиком — это режим
@@ -654,7 +699,11 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
     band = (v >= v_lo) & (v <= v_hi) & (d > 2) & (d < 45)
     db, ub = d[band], u[band]
 
-    data = {name: _side_envelope(db, ub, sign, depth_bins)
+    # Ворота ставятся ровно там, где распознан желоб: глубже путь известен уже
+    # только экстраполяцией, и обрезать по нему кандидатов было бы самонадеянно.
+    gate_depth = min(float(rd.max()), NEAR_GATE_MAX_DEPTH) if (near_gate and len(rd)) else 0.0
+    data = {name: _side_envelope(db, ub, sign, depth_bins, gate_depth=gate_depth,
+                                 gate_u=float(near_gate) if near_gate else NEAR_GATE_U)
             for name, sign in (("left", -1.0), ("right", +1.0))}
     ru_all = ((rxc - np.polyval(base, rd)) * np.cos(np.arctan(base[0]))
               if len(rd) else np.zeros(0))
@@ -668,7 +717,7 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
         rd_fit, ru_fit = rd[fit_mask], ru_all[fit_mask]
     else:
         rd_fit, ru_fit = np.zeros(0), np.zeros(0)
-    shape, seeded, rail_state = _fit_parallel_walls(data, (rd_fit, ru_fit))
+    shape, seeded, rail_state = _fit_parallel_walls(data, (rd_fit, ru_fit), prior=prior)
     if shape is None:
         return None
 
@@ -679,9 +728,10 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
             continue
         predict = (lambda dd, _n=name: side_offset(shape, _n, dd))
         m = wall_metrics(db, ub, sign, predict, depth_bins)
+        reach = _probe_reach(db, ub, sign, predict, REACH_DEPTH_BINS)
         dd, oo, inl = seeded[name]
         sides[name] = {
-            "sign": sign, "widths": shape["widths"][name],
+            "sign": sign, "widths": shape["widths"][name], "reach": reach,
             "edges": shape["edges"].get(name, np.zeros(0)),
             "offset": float(np.median(predict(np.linspace(4, 40, 20)))),
             "depths": dd, "offsets": oo, "inliers": inl,
@@ -690,6 +740,39 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
     return {"frame": frame, "shape": shape, "rails": rail_state,
             "rails_all": (rd, ru_all),
             "left": sides["left"], "right": sides["right"]}
+
+
+def tracked_depth(result, side):
+    """До какой глубины граница реально НАБЛЮДАЕТСЯ, а не продолжается моделью.
+
+    Считается по срезам, которые в подгонке участвовали, ПЛЮС по зондирующим
+    срезам глубже (REACH_DEPTH_BINS): там проверяется только одно — есть ли
+    рядом с предсказанной границей точки. Зондирование не влияет на саму
+    подгонку, поэтому ответ "докуда видно" не стоит ничего по качеству.
+
+    Дальше этой глубины кривая — уже экстраполяция, и на графике её честно
+    рисовать пунктиром.
+    """
+    s = result.get(side)
+    if s is None:
+        return None
+    d, inl = np.asarray(s["depths"], dtype=float), np.asarray(s["inliers"], dtype=bool)
+    near = float(d[inl].max()) if inl.any() else None
+    return max(near, s["reach"]) if (near is not None and s.get("reach")) else (near or s.get("reach"))
+
+
+def _probe_reach(d, u, side_sign, predict, depth_bins, tol=0.35, min_points=8):
+    """Самый дальний зондирующий срез, где у предсказанной границы есть точки."""
+    su = side_sign * u
+    reach = None
+    for lo, hi in depth_bins:
+        sl = (d >= lo) & (d < hi) & (su >= U_MIN) & (su <= U_MAX)
+        if sl.sum() < min_points:
+            continue
+        w = float(np.asarray(predict(np.array([(lo + hi) / 2]))).ravel()[0])
+        if np.isfinite(w) and int(np.sum(np.abs(su[sl] - w) < tol)) >= min_points // 2:
+            reach = (lo + hi) / 2
+    return reach
 
 
 def wall_x(result, side, depths):

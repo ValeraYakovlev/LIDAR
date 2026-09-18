@@ -42,6 +42,7 @@ from rail_detection import (
     slope_from_fit,
     to_track_coords,
 )
+from rail_detection.tracker import TunnelTracker
 from rail_detection.tunnel_frame import (RAIL_FIT_DEPTH, V_HI, V_LO,
                                          _axis_offset_coeffs, wall_metrics)
 
@@ -148,17 +149,24 @@ def old_density(points, res):
 
 def iter_test_frames(dataset, test_set):
     """Проход по выборке с группировкой по bag: один проход по файлу на bag
-    вместо одного полного чтения на каждый кадр."""
+    вместо одного полного чтения на каждый кадр.
+
+    Отдаёт ещё и флаг начала записи со её шагом — временному трекингу нужно
+    знать, где сбросить состояние и сколько кадров прошло между вызовами.
+    """
     by_bag = defaultdict(list)
     for item in test_set:
         by_bag[item["bag"]].append(item["frame"])
     for bag, frames in by_bag.items():
+        step = (frames[1] - frames[0]) if len(frames) > 1 else 1
+        first = True
         for idx, points in iter_selected_frames(bag_path(dataset, bag), frames):
-            yield bag, idx, points
+            yield bag, idx, points, first, step
+            first = False
 
 
 def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
-             use_rails=True, rail_roles=None):
+             use_rails=True, rail_roles=None, track=False):
     with open(test_set_path) as f:
         test_set = json.load(f)["test_set"]
 
@@ -167,10 +175,17 @@ def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
     fails = []
     axis_errors = []
 
-    for bag, idx, points in iter_test_frames(dataset, test_set):
+    tracker = TunnelTracker() if track else None
+    for bag, idx, points, first, step in iter_test_frames(dataset, test_set):
         n_frames += 1
-        res = fit_tunnel_geometry(points, WALL_DEPTH_BINS, use_rails=use_rails,
-                                  **({} if rail_roles is None else {'rail_roles': rail_roles}))
+        kw = dict(use_rails=use_rails,
+                  **({} if rail_roles is None else {'rail_roles': rail_roles}))
+        if tracker is not None:
+            if first:
+                tracker.reset()
+            res = tracker.update(points, steps=step, depth_bins=WALL_DEPTH_BINS, **kw)
+        else:
+            res = fit_tunnel_geometry(points, WALL_DEPTH_BINS, **kw)
         if res is None:
             n_no_frame += 1
             fails.append((bag, idx, "не удалось построить опору"))
@@ -228,10 +243,12 @@ if __name__ == "__main__":
     p.add_argument("--dataset", default="/Volumes/T7/Dataset")
     p.add_argument("--test-set", default="test_set.json")
     p.add_argument("--compare", action="store_true", help="мерить теми же метриками старые методы")
+    p.add_argument("--track", action="store_true",
+                   help="связывать кадры между собой (rail_detection.tracker)")
     p.add_argument("--rail-roles", nargs="*", default=None,
                    help="аблация: какие роли играют рельсы (floor axis rows)")
     p.add_argument("--no-rails", action="store_true",
                    help="стресс-проверка: отключить рельсы и мерить безрельсовый путь")
     a = p.parse_args()
     evaluate(a.dataset, a.test_set, compare=a.compare, use_rails=not a.no_rails,
-             rail_roles=a.rail_roles)
+             rail_roles=a.rail_roles, track=a.track)
