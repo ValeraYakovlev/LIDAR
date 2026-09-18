@@ -32,7 +32,7 @@ from PIL import Image
 
 from rail_detection import (DEFAULT_BAGS, bag_path, fit_tunnel_geometry, frame_count,
                             iter_frames, to_track_coords, tracked_depth, wall_x)
-from rail_detection.curvature import eval_fit
+from rail_detection.tunnel_frame import tunnel_center_coeffs
 from rail_detection.tracker import TunnelTracker
 from rail_detection.tunnel_frame import V_HI, V_LO
 
@@ -94,7 +94,11 @@ def collect(dataset, bag, stride, max_frames=None, track=True, depth_max=DEPTH_M
                 radius=res["shape"]["radius"],
                 limited=bool(res["shape"].get("smoothed")),
                 reach=float(np.mean(reach)) if reach else np.nan,
-                axis=np.column_stack([eval_fit(res["frame"]["axis_fit"], dd), dd]).astype(np.float32),
+                # Ось ИТОГОВАЯ (опора плюс найденная форма), а не опорная: опора —
+                # это лишь прямая по рельсам, и когда рельсы находятся плохо, она
+                # улетает вбок, а модель компенсирует это полуширинами. Рисовать
+                # надо то, что метод утверждает про путь, а не промежуточную величину.
+                axis=np.column_stack([np.polyval(tunnel_center_coeffs(res), dd), dd]).astype(np.float32),
                 walls={s: np.column_stack([wall_x(res, s, dd), dd]).astype(np.float32)
                        for s in ("left", "right") if res[s] is not None},
                 reach_side={s: tracked_depth(res, s) for s in ("left", "right")},

@@ -42,7 +42,7 @@ from collections import deque
 
 import numpy as np
 
-from .tunnel_frame import DEPTH_SCALE, MIN_RADIUS, fit_tunnel_geometry
+from .tunnel_frame import DEPTH_SCALE, MIN_RADIUS, fit_tunnel_geometry, tracked_depth, wall_x
 
 HISTORY = 5         # кадров в окне сглаживания кривизны
 SPIKE_MARK = 0.15   # м: с такой разницы сырой и сглаженной α кадр считается выбросом
@@ -65,15 +65,18 @@ class TunnelTracker:
         self.alpha_hist = deque(maxlen=self.history)
         self.width_hist = {"left": deque(maxlen=self.history),
                            "right": deque(maxlen=self.history)}
+        self.bounds = None
         self.gap = 0
 
     @property
     def state(self):
-        """Подсказка для следующего кадра: медианные полуширины по окну."""
+        """Подсказка для следующего кадра: медианные полуширины по окну и
+        границы тоннеля в координатах сенсора для отсечения точек."""
         if not self.alpha_hist:
             return None
         return {"widths": {side: (float(np.median(h)) if h else None)
-                           for side, h in self.width_hist.items()}}
+                           for side, h in self.width_hist.items()},
+                "bounds": self.bounds}
 
     def update(self, points, steps=1, **kwargs):
         """Обрабатывает очередной кадр записи. Возвращает тот же dict, что и
@@ -96,7 +99,30 @@ class TunnelTracker:
                 self.width_hist[side].append(res[side]["widths"][0])
 
         _apply_alpha(res, float(np.median(self.alpha_hist)))
+        self.bounds = _wall_bounds(res)
         return res
+
+
+def _wall_bounds(res, lo=3.0, hi=45.0):
+    """Кривые стен в координатах сенсора — их следующий кадр использует как
+    границу "тоннель кончается здесь". Параболы достаточно: сама модель стены
+    не сложнее.
+
+    max_depth ограничивает применимость: глубже того, куда стена этого кадра
+    дотянулась, утверждать что-либо о границе нельзя.
+    """
+    dd = np.linspace(lo, hi, 40)
+    out = {"left": None, "right": None, "max_depth": lo}
+    reaches = []
+    for side in ("left", "right"):
+        if res[side] is None:
+            return None
+        out[side] = np.polyfit(dd, wall_x(res, side, dd), 2)
+        r = tracked_depth(res, side)
+        if r:
+            reaches.append(r)
+    out["max_depth"] = max(reaches) if reaches else hi
+    return out
 
 
 def _apply_alpha(res, alpha):

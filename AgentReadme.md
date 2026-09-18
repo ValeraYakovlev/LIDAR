@@ -59,7 +59,8 @@ eval_tunnel_geometry.py — ТЕКУЩАЯ оценка: rail-guided геоме�
 plot_topdown.py         — вид сверху на облако точек одного кадра
 plot_combined_walls.py  — визуализация устаревшего combined_wall_fit
 plot_tunnel_geometry.py — ТЕКУЩАЯ визуализация: сетка кадров с геометрией тоннеля
-make_run_gif.py         — GIF покадрового прогона по всей записи + лента кривизны
+make_run_gif.py         — GIF покадрового прогона: весь кадр сверху + ленты кривизны и дальности
+plot_cross_sections.py  — срезы ПЕРПЕНДИКУЛЯРНО Y (профиль пола Z(X)) с причиной отказа детектора рельсов
 curved_slicing.py       — эксперимент со срезами по кривой (см. knowledge.md)
 wall_method_comparison.py — сравнение методов детекции стен (устарело)
 
@@ -76,7 +77,7 @@ validation_run_v2.json  — doubleT_platform ЦЕЛИКОМ, ЗАМОРОЖЕН 
 | файл | что делает |
 |---|---|
 | `loader.py` | Чтение bag: `load_frame` (один кадр, пересканирует файл — дорого при многих вызовах), `iter_frames` (один проход, с шагом), `iter_selected_frames` (один проход, только нужные индексы кадров — быстрее всего для выборок), `frame_count` (число кадров без чтения сообщений) |
-| `detector.py` | `find_groove_and_rails` — находит желоб между рельсами и сами рельсы в одном срезе по глубине (базовый геометрический признак, см. knowledge.md §13) |
+| `detector.py` | Рельсы в срезе. `find_groove_and_rails` — через V-образную выемку (§13); `find_rails_by_gauge` — через пару пиков на расстоянии колеи (§18, работает и на плитном основании, где выемки нет); `find_rails` — первый с откатом на второй |
 | `tracking.py` | `robust_centerline` — сглаживание centerline по срезам одного кадра с отбраковкой выбросов |
 | `curvature.py` | `fit_straight_or_arc` / `ransac_poly_fit` — RANSAC-подгонка прямая-или-дуга; `eval_fit`/`slope_from_fit` — единообразное вычисление по результату подгонки |
 | `walls.py` | **Устаревшие** методы детекции стен (`find_wall_positions`, `combined_wall_fit`) — независимая детекция стены в каждом срезе координат сенсора. Оставлены для сравнения в `eval_tunnel_geometry.py --compare` |
@@ -135,12 +136,13 @@ validation_run_v2.json  — doubleT_platform ЦЕЛИКОМ, ЗАМОРОЖЕН 
 |---|---|---|
 | `main` | актуальная база | всё до и включая §15 (rail-guided геометрия, координаты пути, одна форма на обе стены). Тег `rail-guided-v1` на коммите слияния |
 | `feature/rails-tied-to-curvature` | смержена в ветку ниже | §16: увязка рельсов с кривизной, кусочная ширина, `dev_runs.json`/`validation_run.json` |
-| `feature/temporal-tracking-near-gate` | **активная разработка** | §17 поверх предыдущей: `tracker.py`, замер дальности, вид сверху на весь кадр |
+| `feature/temporal-tracking-near-gate` | смержена в ветку ниже | §17: `tracker.py`, замер дальности, вид сверху на весь кадр |
+| `feature/prev-frame-mask` | **активная разработка** | §18: детектор рельсов по колее, отсечение по стенам прошлого кадра, срезы перпендикулярно Y |
 | `feature/walls-and-turns` | смержена в main (предок) | самая ранняя работа: детекция желоба/рельс, кривизна пути, классификация поворотов |
 | `feature/density-walls-arc-fit` | смержена в main (предок) | эксперименты с детекцией стен по плотности до перехода на координаты пути |
 | `feature/rail-guided-wall-geometry` | смержена в main (предок) | §15 как отдельная ветка до слияния |
 
-Чтобы посмотреть на самый свежий рабочий метод — `feature/temporal-tracking-near-gate`.
+Чтобы посмотреть на самый свежий рабочий метод — `feature/prev-frame-mask`.
 Чтобы посмотреть на последнее стабильное состояние без экспериментов §16 — `main`
 (тег `rail-guided-v1`).
 
@@ -161,6 +163,9 @@ python plot_tunnel_geometry.py --test-set dev_runs_v2.json --n-sample 40
 
 # GIF: весь кадр сверху, лента кривизны и лента дальности наблюдения
 python make_run_gif.py --bags roundT_pressureGate_roundT
+
+# срезы перпендикулярно Y — смотреть, почему детектор рельсов отказывает на кадре
+python plot_cross_sections.py --bag roundT_squareT_pressureGate_squareT --frames 160 164 168 172
 ```
 
 Все команды принимают `--dataset /path/to/Dataset`, по умолчанию
