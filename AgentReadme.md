@@ -49,6 +49,7 @@ Bag'и (см. [knowledge.md §3](knowledge.md)):
 ```
 rail_detection/        — пакет с алгоритмами (см. ниже)
 knowledge.md            — база знаний: данные, эксперименты, что сработало/нет
+experiments/            — планы будущих экспериментов (гипотеза, шаги, метрики, риски)
 AgentReadme.md          — этот файл
 requirements.txt        — rosbags, numpy, scipy, matplotlib
 
