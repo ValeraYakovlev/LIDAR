@@ -39,8 +39,10 @@ from rail_detection import (DEFAULT_BAGS, bag_path, fit_tunnel_geometry, frame_c
 from rail_detection.tunnel_frame import tunnel_center_coeffs
 from rail_detection.tracker import TunnelTracker
 from rail_detection.tunnel_frame import V_HI, V_LO
+from rail_detection.gauge import (TRUST_DEPTH, ObstacleWatch, corridor_halfwidth,
+                                  intrusions)
 
-DEPTH_MAX = 120.0
+DEPTH_MAX = 180.0  # тоннель просматривается дальше 120 м, и это видно на картинке
 X_LIM = (-10.0, 10.0)
 MAX_GRAY = 16000  # точек на кадр в GIF: больше глазом не различить, а вес растёт
 EXTRAPOLATION_SHOW = 1.5  # во сколько раз за предел наблюдения показывать продолжение
@@ -79,6 +81,7 @@ def collect(dataset, bag, stride, max_frames=None, track=True, depth_max=DEPTH_M
     rng = np.random.default_rng(0)
     tracker = (TunnelTracker(**({} if accumulate is None else {"accumulate": accumulate}))
                if track else None)
+    watch = ObstacleWatch()
     out = []
     for idx, points, n_total in iter_frames(bag_path(dataset, bag), stride=stride,
                                            max_frames=max_frames):
@@ -122,8 +125,24 @@ def collect(dataset, bag, stride, max_frames=None, track=True, depth_max=DEPTH_M
             layers = [pick(vis & ~band & (v >= lo) & (v < hi), share)
                       for lo, hi, _, _ in HEIGHT_BANDS]
 
+        # Габаритный коридор и вторжения в него (rail_detection.gauge): то, ради
+        # чего вся геометрия и строилась — препятствие определяется как то, что
+        # мешает проехать, а не как то, что выглядит необычно.
+        gauge = None
+        if res is not None:
+            it = intrusions(points, res)
+            sh = (tracker.accumulator.last.get("shift")
+                  if tracker is not None and tracker.accumulator is not None
+                  and tracker.accumulator.last.get("ok") else None)
+            confirmed = watch.update(it["depth"], sh)
+            hit = np.where(it["mask"])[0]
+            if len(hit) > MAX_GRAY // 4:
+                hit = rng.choice(hit, MAX_GRAY // 4, replace=False)
+            gauge = {"pts": np.column_stack([x[hit], depth[hit]]).astype(np.float32),
+                     "depth": it["depth"], "confirmed": confirmed, "reach": it["reach"]}
+
         rec = {
-            "idx": idx, "n_total": n_total,
+            "idx": idx, "n_total": n_total, "gauge": gauge,
             "layers": [np.column_stack([x[i], depth[i]]).astype(np.float32) for i in layers],
             "band": np.column_stack([x[own], depth[own]]).astype(np.float32),
             "past": np.column_stack([x[past], depth[past]]).astype(np.float32),
@@ -192,7 +211,33 @@ def render(records, bag, depth_max=DEPTH_MAX, dpi=120):
         if r["kind"] is None:
             head = f"{bag}  кадр {r['idx']}/{r['n_total']}\nнет опоры — геометрия не строится"
         else:
-            ax.plot(r["axis"][:, 0], r["axis"][:, 1], c="dimgray", lw=0.9, ls="--")
+            # Ось рисуется не на всю глубину показа: парабола, продлённая
+            # втрое дальше своих данных, уезжает за край кадра и ничего не
+            # сообщает. То же правило, что и для стен.
+            a_cut = (r["reach"] if np.isfinite(r["reach"]) else 40.0) * EXTRAPOLATION_SHOW
+            a_sel = r["axis"][:, 1] <= a_cut
+            ax.plot(r["axis"][a_sel, 0], r["axis"][a_sel, 1], c="dimgray", lw=0.9, ls="--")
+            # Габаритный коридор: сплошной там, где путь измерен, и расходящийся
+            # конусом дальше — за пределом наблюдения поезд может уйти вбок не
+            # больше, чем позволяет минимальный радиус, и это честнее одной
+            # продлённой кривой.
+            g = r.get("gauge")
+            if g is not None:
+                dd = r["axis"][:, 1]
+                cw = corridor_halfwidth(dd, g.get("reach"))
+                # Конус рисуется, пока он уже тоннеля: шире 3 м он перестаёт
+                # что-либо утверждать — там уже вся ширина тоннеля, и «возможное
+                # положение поезда» совпадает с «где угодно».
+                show = cw < 3.0
+                for sgn in (-1.0, +1.0):
+                    line = r["axis"][:, 0] + sgn * cw
+                    trust = show & (dd <= TRUST_DEPTH)
+                    cone = show & (dd > TRUST_DEPTH)
+                    ax.plot(line[trust], dd[trust], c="#d1495b", lw=1.4, alpha=0.9)
+                    ax.plot(line[cone], dd[cone], c="#d1495b", lw=0.8, ls="--", alpha=0.45)
+                if len(g["pts"]):
+                    ax.scatter(g["pts"][:, 0], g["pts"][:, 1], s=7, c="#d1495b",
+                               marker="x", linewidths=0.8, zorder=5)
             for side, w in r["walls"].items():
                 # Сплошная — пока граница наблюдается, пунктир — дальше уже
                 # продолжение модели, а не измерение. Продолжение рисуется лишь
@@ -219,7 +264,10 @@ def render(records, bag, depth_max=DEPTH_MAX, dpi=120):
                     parts.append(f"{name} {o:.2f}м cov{cov:.2f} leak{leak:.2f}")
             head = (f"{bag}  кадр {r['idx']}/{r['n_total']}\n{shape}\n"
                     + "   ".join(parts)
-                    + f"\nзелёная линия — граница в полосе {V_LO}-{V_HI} м над головкой рельса")
+                    + f"\nзелёная — граница тоннеля, красная — габарит поезда"
+                    + (f"\nПРЕПЯТСТВИЕ на {r['gauge']['confirmed']:.0f} м"
+                       if r.get("gauge") and r["gauge"].get("confirmed")
+                       else "\nпуть свободен"))
 
         # Подпись полос: без неё раскраска ничего не объясняет, а именно
         # объяснение здесь и есть цель.
