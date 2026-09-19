@@ -2,7 +2,8 @@
 """GIF одного прогона: вид сверху на ВЕСЬ кадр, с найденной геометрией тоннеля.
 
 Три панели:
-  сверху  — вид сверху на всю глубину кадра. Граница нарисована сплошной там,
+  сверху  — вид сверху на всю глубину кадра, точки раскрашены по высоте над
+            головкой рельса (см. HEIGHT_BANDS). Граница нарисована сплошной там,
             где она реально наблюдается, и пунктиром дальше — так сразу видно,
             докуда геометрию можно отслеживать, а где это уже продолжение
             модели в пустоту. Точки клиренс-полосы жёлтые, если они из самого
@@ -30,6 +31,7 @@ import numpy as np
 matplotlib.use("Agg")
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 from PIL import Image
 
 from rail_detection import (DEFAULT_BAGS, bag_path, fit_tunnel_geometry, frame_count,
@@ -42,6 +44,21 @@ DEPTH_MAX = 120.0
 X_LIM = (-10.0, 10.0)
 MAX_GRAY = 16000  # точек на кадр в GIF: больше глазом не различить, а вес растёт
 EXTRAPOLATION_SHOW = 1.5  # во сколько раз за предел наблюдения показывать продолжение
+
+# Полосы высот над головкой рельса, каждая своим цветом.
+#
+# Зачем. Зелёная линия — граница тоннеля В КЛИРЕНС-ПОЛОСЕ (v = 0.2…1.1 м), а
+# рисуется она поверх вида СВЕРХУ, где высота не видна вовсе. Поэтому настил
+# платформы и свод, которые законно шире полосы, выглядели точками «за стеной», и
+# картинка сообщала об ошибке там, где её нет: замер на кадре 48 doubleT_platform
+# дал 25 937 точек снаружи левой границы и НОЛЬ из них в клиренс-полосе — 48%
+# настил и лотки, 52% свод. Раскраска по высоте убирает это недоразумение,
+# ничего не меняя в самом методе.
+HEIGHT_BANDS = [
+    (-9.0, V_LO, "#ddd7cc", "пол, желоб"),
+    (V_HI, 2.0, "#d97b7b", "настил, лотки"),
+    (2.0, 9.0, "#7f9ec4", "свод"),
+]
 
 # doubleT_obstacle исключён из DEFAULT_BAGS как нетиповая сцена (стоящий поезд
 # на пути), но для покадрового просмотра он как раз самый интересный — видно,
@@ -79,27 +96,35 @@ def collect(dataset, bag, stride, max_frames=None, track=True, depth_max=DEPTH_M
         depth = -y
         vis = (depth > 0) & (depth < depth_max) & (np.abs(x) < X_LIM[1] + 2)
         band = np.zeros(len(x), dtype=bool)
+        v = None
         if res is not None:
             _, _, v = to_track_coords(x, y, z, res["frame"])
             band = vis & (v >= V_LO) & (v <= V_HI)
 
-        gray_idx = np.where(vis & ~band)[0]
-        if len(gray_idx) > MAX_GRAY:
-            gray_idx = rng.choice(gray_idx, MAX_GRAY, replace=False)
+        def pick(mask, cap):
+            i = np.where(mask)[0]
+            return rng.choice(i, cap, replace=False) if len(i) > cap else i
+
         # Точки, подклеенные из прошлых кадров, рисуются отдельным цветом: иначе
         # по картинке не отличить, где метод видит сам, а где опирается на
         # накопленное, а это ровно то, что проверяется.
-        own = np.where(band & (np.arange(len(x)) < n_native))[0]
-        past = np.where(band & (np.arange(len(x)) >= n_native))[0]
         cap = MAX_GRAY // 2
-        if len(own) > cap:
-            own = rng.choice(own, cap, replace=False)
-        if len(past) > cap:
-            past = rng.choice(past, cap, replace=False)
+        own = pick(band & (np.arange(len(x)) < n_native), cap)
+        past = pick(band & (np.arange(len(x)) >= n_native), cap)
+
+        # Остальное разбирается по полосам высот, а не валится в один серый ком
+        # (см. HEIGHT_BANDS). Если геометрии нет, высоту отсчитывать не от чего —
+        # тогда всё идёт в первую полосу как было.
+        share = MAX_GRAY // len(HEIGHT_BANDS)
+        if v is None:
+            layers = [pick(vis, MAX_GRAY)] + [np.zeros(0, dtype=int)] * (len(HEIGHT_BANDS) - 1)
+        else:
+            layers = [pick(vis & ~band & (v >= lo) & (v < hi), share)
+                      for lo, hi, _, _ in HEIGHT_BANDS]
 
         rec = {
             "idx": idx, "n_total": n_total,
-            "gray": np.column_stack([x[gray_idx], depth[gray_idx]]).astype(np.float32),
+            "layers": [np.column_stack([x[i], depth[i]]).astype(np.float32) for i in layers],
             "band": np.column_stack([x[own], depth[own]]).astype(np.float32),
             "past": np.column_stack([x[past], depth[past]]).astype(np.float32),
         }
@@ -156,7 +181,9 @@ def render(records, bag, depth_max=DEPTH_MAX, dpi=120):
         for a in (ax, ax_k, ax_r):
             a.clear()
 
-        ax.scatter(r["gray"][:, 0], r["gray"][:, 1], s=0.6, c="lightgray", alpha=0.5)
+        for pts, (_, _, colour, _) in zip(r["layers"], HEIGHT_BANDS):
+            if len(pts):
+                ax.scatter(pts[:, 0], pts[:, 1], s=0.7, c=colour, alpha=0.7)
         if len(r.get("past", ())):
             ax.scatter(r["past"][:, 0], r["past"][:, 1], s=1.1, c="#5a8fc8", alpha=0.55)
         if len(r["band"]):
@@ -190,8 +217,20 @@ def render(records, bag, depth_max=DEPTH_MAX, dpi=120):
                 if side in r["labels"]:
                     o, cov, leak = r["labels"][side]
                     parts.append(f"{name} {o:.2f}м cov{cov:.2f} leak{leak:.2f}")
-            head = f"{bag}  кадр {r['idx']}/{r['n_total']}\n{shape}\n" + "   ".join(parts)
+            head = (f"{bag}  кадр {r['idx']}/{r['n_total']}\n{shape}\n"
+                    + "   ".join(parts)
+                    + f"\nзелёная линия — граница в полосе {V_LO}-{V_HI} м над головкой рельса")
 
+        # Подпись полос: без неё раскраска ничего не объясняет, а именно
+        # объяснение здесь и есть цель.
+        handles = [Line2D([], [], marker="o", ls="", ms=3, c=c, label=n)
+                   for _, _, c, n in HEIGHT_BANDS]
+        handles += [Line2D([], [], marker="o", ls="", ms=3, c="#c8a45a",
+                           label=f"клиренс {V_LO}-{V_HI} м"),
+                    Line2D([], [], marker="o", ls="", ms=3, c="#5a8fc8",
+                           label="то же, из прошлых кадров")]
+        ax.legend(handles=handles, fontsize=5.4, loc="upper left", framealpha=0.85,
+                  handletextpad=0.3, borderpad=0.3, labelspacing=0.25)
         ax.set_xlim(*X_LIM)
         ax.set_ylim(0, depth_max)
         ax.set_xticks([])
