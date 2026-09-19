@@ -46,9 +46,12 @@ from rail_detection import (
 from rail_detection.tracker import TunnelTracker
 from rail_detection.tunnel_frame import (RAIL_FIT_DEPTH, V_HI, V_LO,
                                          _axis_offset_coeffs, tracked_depth,
-                                         wall_metrics)
+                                         tunnel_center_coeffs, wall_metrics)
 
 MIN_COVERAGE = 0.70
+# Полуширина меньше этого физически невозможна: габарит подвижного состава шире.
+# Служит только диагностикой в отчёте; решение о запрете — эксперимент 7.
+MIN_HALF_WIDTH = 1.60
 MAX_LEAK = 0.15
 OFFSET_RANGE = (1.2, 6.5)
 
@@ -80,6 +83,32 @@ def axis_holdout_error(res):
     # Одиночные грубые промахи детектора рельс (> 1 м) — не ошибка оси
     err = err[err < 1.0]
     return float(np.median(err)) if len(err) else None
+
+
+def axis_slope(res, depth=20.0):
+    """Наклон ИТОГОВОЙ оси пути на фиксированной глубине — то, что метод
+    утверждает про направление движения. Берётся на 20 м, а не у самого поезда:
+    вблизи наклон почти целиком определяется опорой по рельсам, а спорная часть
+    (добавка по стенам) проявляется дальше."""
+    return float(np.polyval(np.polyder(tunnel_center_coeffs(res)), depth))
+
+
+def segment_signature(res):
+    """Сколько участков полуширины на каждой стороне.
+
+    Считается ЧИСЛО участков, а не положения границ. Первая версия сравнивала
+    округлённые до метра границы и оказалась бракованной: разрыв ширины — это
+    место в тоннеле, и при движении вперёд оно ЗАКОННО приближается на Δs
+    (полтора метра за кадр), так что его округлённое положение меняется каждый
+    кадр. Метрика засчитывала это как перестройку и показывала 32% churn там,
+    где ничего не перестраивалось.
+
+    Число участков такой подделке не подвержено: оно меняется, только когда
+    модель реально решила, что ступеней стало больше или меньше, — а вот это
+    за 0.2 с действительно произойти не может.
+    """
+    return tuple(0 if res[side] is None else len(res[side]["widths"])
+                 for side in ("left", "right"))
 
 
 def _band(points, res):
@@ -169,7 +198,8 @@ def iter_test_frames(dataset, test_set):
 
 def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
              use_rails=True, rail_roles=None, track=False, surface_tol=None,
-             accumulate=None, deep=False):
+             accumulate=None, deep=False, beta_prior=None, sticky=None,
+             min_half_width=None):
     with open(test_set_path) as f:
         test_set = json.load(f)["test_set"]
     bins = WALL_DEPTH_BINS_DEEP if deep else WALL_DEPTH_BINS
@@ -180,13 +210,23 @@ def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
     fails = []
     axis_errors = []
     reaches = []
+    jumps = []        # покадровый скачок наклона оси
+    restructures = [] # сменилась ли структура разрывов ширины между кадрами
+    too_narrow = 0    # сегментов уже физически возможного
+    prev = None
 
     tracker = TunnelTracker(**(accumulate or {})) if track else None
     for bag, idx, points, first, step in iter_test_frames(dataset, test_set):
         n_frames += 1
         per_bag[bag]["n"] += 1
+        # Переопределения передаются, только если заданы: иначе CLI со своим
+        # default=0 молча подменял бы умолчания модуля, и выбранная в
+        # эксперименте настройка не доезжала бы до подгонки.
         kw = dict(use_rails=use_rails, surface_tol=surface_tol,
-                  **({} if rail_roles is None else {'rail_roles': rail_roles}))
+                  **({} if rail_roles is None else {'rail_roles': rail_roles}),
+                  **{k: v for k, v in (("beta_prior", beta_prior), ("sticky", sticky),
+                                       ("min_half_width", min_half_width))
+                     if v is not None})
         if tracker is not None:
             if first:
                 tracker.reset()
@@ -196,7 +236,20 @@ def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
         if res is None:
             n_no_frame += 1
             fails.append((bag, idx, "не удалось построить опору"))
+            prev = None
             continue
+
+        # Дрожание геометрии между кадрами. Метрика стен к нему почти слепа
+        # (§18: она не заметила опоры, уехавшей на 2.57 м), а именно оно и
+        # видно на GIF как перекос кадра и перестройка границы.
+        cur = {"slope": axis_slope(res), "segs": segment_signature(res)}
+        if prev is not None and not first:
+            jumps.append(abs(cur["slope"] - prev["slope"]))
+            restructures.append(int(cur["segs"] != prev["segs"]))
+        prev = cur
+        for side in ("left", "right"):
+            if res[side] is not None:
+                too_narrow += sum(1 for w in res[side]["widths"] if w < MIN_HALF_WIDTH)
 
         m_new = measure_new(points, res)
         graded = {"new": m_new}
@@ -242,6 +295,14 @@ def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
             print(f"  ось на отложенных рельсах (>{RAIL_FIT_DEPTH:.0f} м): медиана "
                   f"{np.median(a):.3f} м, 90-й перцентиль {np.percentile(a, 90):.3f} м "
                   f"({len(a)} кадров)")
+        if jumps:
+            j = np.array(jumps)
+            print(f"  скачок наклона оси между кадрами: медиана {np.median(j):.5f}, "
+                  f"90-й перцентиль {np.percentile(j, 90):.5f}")
+        if restructures:
+            print(f"  число участков ширины меняется в "
+                  f"{100 * np.mean(restructures):.1f}% переходов"
+                  + (f"; сегментов уже {MIN_HALF_WIDTH} м: {too_narrow}" if too_narrow else ""))
         if reaches:
             rr = np.array(reaches)
             print(f"  дальность наблюдения границы: медиана {np.median(rr):.1f} м, "
@@ -278,10 +339,17 @@ if __name__ == "__main__":
     p.add_argument("--accumulate", type=int, default=None,
                    help="сколько кадров складывать со сдвигом на Δs "
                         "(по умолчанию как в rail_detection.tracker; 1 — без накопления)")
+    p.add_argument("--beta-prior", type=float, default=None,
+                   help="эксп.6: притяжение курса к курсу опоры по рельсам (0 — как было)")
+    p.add_argument("--sticky", type=float, default=None,
+                   help="эксп.7: удержание структуры разрывов ширины (0 — выключено)")
+    p.add_argument("--min-half-width", type=float, default=None,
+                   help="эксп.7: физический предел полуширины снизу, м (0 — выключен)")
     p.add_argument("--deep", action="store_true",
                    help="эксп.3: продлить срезы подгонки с 42 до 62 м")
     a = p.parse_args()
     evaluate(a.dataset, a.test_set, compare=a.compare, use_rails=not a.no_rails,
              rail_roles=a.rail_roles, track=a.track, surface_tol=a.surface_tol,
              accumulate=({"accumulate": a.accumulate} if a.accumulate else None),
-             deep=a.deep)
+             deep=a.deep, beta_prior=a.beta_prior, sticky=a.sticky,
+             min_half_width=a.min_half_width)

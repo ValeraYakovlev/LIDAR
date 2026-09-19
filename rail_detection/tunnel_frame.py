@@ -92,6 +92,12 @@ MIN_RADIUS = 120.0         # м: круче метро не поворачива
 CURVE_GAIN = 0.85          # дуга обязана сбить невязку хотя бы во столько раз
 CURVE_SNR = 4.0            # и увести стену вбок хотя бы во столько раз сильнее шума
 RAIL_WEIGHT = 1.0          # вес рельсового наблюдения относительно стенного
+# Притяжение курса к курсу ОПОРЫ по рельсам (см. _solve_shape и knowledge.md §21).
+# 0 — как было до эксперимента 6: курс определяли стены. Замер показал, что они
+# определяли его плохо — ошибка оси на ОТЛОЖЕННЫХ рельсах падает на 27%, когда
+# стенам запрещают его править. Значение 2 взято по колену кривой: дальше (5)
+# медиана скачка чуть лучше, а 90-й перцентиль уже хуже.
+BETA_PRIOR = 2.0
 RAIL_WINDOW = 0.30         # м: дальше этого от оси рельсовый срез — промах детектора
 RAIL_FIT_DEPTH = 15.0      # м: глубже рельсы в подгонку не берутся (см. fit_tunnel_geometry)
 MAX_WIDTH_BREAKS = 2       # сколько разрывов ширины разрешено на сторону
@@ -100,6 +106,25 @@ WIDTH_GAIN = 0.80          # разрыв обязан сбить среднюю
 NEAR_GATE_U = 3.0          # м: ширина ближних ворот, если они включены (по умолчанию выключены)
 NEAR_GATE_MAX_DEPTH = 25.0 # м: глубже ворота не ставятся, там ось уже не так точна
 PREV_WALL_MARGIN = 0.8     # м: насколько наружу от стен прошлого кадра ещё смотрим
+# Физический предел полуширины снизу: уже габарита подвижного состава её быть не
+# может. Калибруется по данным (нижний перцентиль ближних срезов на всех
+# записях), а не берётся из справочника — так же, как колея в §18.
+# ВЫКЛЮЧЕН по результату замера (§22): предел 1.70 м убирает все слишком узкие
+# сегменты (13 -> 0), но стоит 1.7 пункта метрики стен. Значит эти сегменты
+# опираются на реальные точки — модель описывает ими что-то существующее
+# (край ниши, опору), просто называет это стеной. Запрещать их, не разобравшись
+# что там, — менять точность на опрятность.
+MIN_HALF_WIDTH = 0.0
+# Насколько удерживается структура разрывов с прошлого кадра: прежняя остаётся,
+# если объясняет срезы не хуже чем в WIDTH_STICKY раз по сравнению с лучшей
+# новой. 0 — выключено (структура ищется заново каждый кадр). Внимание: 1.0 это
+# НЕ выключено, а «прежняя выигрывает при ничьей».
+# ВЫКЛЮЧЕНО по результату замера (§22): удержание структуры снижает перестройку
+# числа участков с 21.3% до 15.5%, то есть механизм работает, — но втрое
+# увеличивает число невозможно узких сегментов (23 -> 59), потому что прежняя
+# структура проносится мимо проверки на величину ступени. Стабильность получена
+# за счёт того, ради чего эксперимент и затевался.
+WIDTH_STICKY = 0.0
 
 
 def rail_samples(points, depth_bins=DEFAULT_DEPTH_BINS):
@@ -255,7 +280,8 @@ def _side_envelope(d, u, side_sign, depth_bins, u_min=U_MIN, u_max=U_MAX,
     return np.array(depths), np.array(offsets)
 
 
-def _solve_shape(data, rails, curvature, segs=None, rail_weight=RAIL_WEIGHT):
+def _solve_shape(data, rails, curvature, segs=None, rail_weight=RAIL_WEIGHT,
+                 beta_prior=BETA_PRIOR):
     """МНК одной общей формы по срезам ОБЕИХ стен И по рельсам сразу.
 
     Модель: ось тоннеля отклоняется от прямой опоры на s(t) = α·t² + β·t + γ,
@@ -285,6 +311,12 @@ def _solve_shape(data, rails, curvature, segs=None, rail_weight=RAIL_WEIGHT):
     относится каждый срез, и на каждый участок заводится своя колонка. Форма
     (α, β, γ) при этом остаётся общей, то есть стены по-прежнему не могут
     разъехаться "домиком" — меняться разрешено только расстоянию до них.
+
+    beta_prior — насколько сильно курс β притягивается к нулю, то есть к курсу
+    ОПОРЫ. Добавляется строкой `λ·β = 0`. Смысл в том, что курс опоры снят с
+    рельсов, а β — поправка к нему по стенам, и замер показал, что эта поправка
+    и есть источник перекоса кадра (см. knowledge.md §21). λ = 0 — как было,
+    λ → ∞ — курс целиком от рельсов.
     """
     present = [name for name in ("left", "right") if data[name][2].sum() >= 3]
     if not present:
@@ -333,6 +365,15 @@ def _solve_shape(data, rails, curvature, segs=None, rail_weight=RAIL_WEIGHT):
             weights.append(rail_weight)
     if len(rows) < n_par + 1:
         return None
+    if beta_prior:
+        # Строка регуляризации: сама по себе она не наблюдение, поэтому и
+        # добавляется после проверки на достаточность строк — иначе система из
+        # одних приоров считалась бы разрешимой.
+        row = np.zeros(n_par)
+        row[1 if curvature else 0] = 1.0
+        rows.append(row)
+        rhs.append(0.0)
+        weights.append(float(beta_prior) ** 2)
 
     A, b, w = np.array(rows), np.array(rhs), np.sqrt(np.array(weights))
     sol, *_ = np.linalg.lstsq(A * w[:, None], b * w, rcond=None)
@@ -373,7 +414,8 @@ def side_offset(shape, side, depths):
 
 
 def _segment_width(depths, resid, max_breaks=None, min_seg=3,
-                   min_step=MIN_WIDTH_STEP, gain=WIDTH_GAIN):
+                   min_step=MIN_WIDTH_STEP, gain=WIDTH_GAIN,
+                   floor=MIN_HALF_WIDTH, prior_edges=None, sticky=WIDTH_STICKY):
     """Кусочно-постоянная полуширина вдоль кадра.
 
     Тоннель не обязан быть одной ширины на весь кадр: у станции граница — торец
@@ -390,6 +432,17 @@ def _segment_width(depths, resid, max_breaks=None, min_seg=3,
     Считается по МЕДИАНЕ и средней |невязке|, а не по МНК: у ступени соседний
     участок — это выброс огромной величины, и квадратичная мера размазала бы
     границу между участками.
+
+    floor — физический предел полуширины снизу. Невязки здесь и есть полуширины
+    (`resid = o − s(d) = W`), поэтому предел применяется к ним прямо. Разбиение,
+    где хоть один участок уже предела, не рассматривается вовсе: полуширина
+    меньше габарита подвижного состава — не наблюдение, а промах.
+
+    prior_edges/sticky — структура разрывов с ПРОШЛОГО кадра, сдвинутая на
+    пройденный путь, и то, насколько она удерживается. Новое разбиение должно
+    объяснить срезы заметно лучше прежнего (в 1/sticky раз), иначе остаётся
+    прежнее. Без этого структура пересчитывается с нуля каждый кадр и
+    перестраивается в трети переходов — тоннель за 0.2 с так меняться не может.
     """
     if max_breaks is None:
         max_breaks = MAX_WIDTH_BREAKS
@@ -399,16 +452,19 @@ def _segment_width(depths, resid, max_breaks=None, min_seg=3,
     d, r = d[order], r[order]
     n = len(d)
 
-    def evaluate(cuts):
+    def evaluate(cuts, check_step=True):
         bounds = [0] + list(cuts) + [n]
         vals, tot = [], 0.0
         for a, b in zip(bounds[:-1], bounds[1:]):
             if b - a < min_seg:
                 return None
             v = float(np.median(r[a:b]))
+            if floor and v < floor:
+                return None
             vals.append(v)
             tot += float(np.abs(r[a:b] - v).sum())
-        if any(abs(vals[i + 1] - vals[i]) < min_step for i in range(len(vals) - 1)):
+        if check_step and any(abs(vals[i + 1] - vals[i]) < min_step
+                              for i in range(len(vals) - 1)):
             return None
         return tot / n, vals
 
@@ -426,11 +482,26 @@ def _segment_width(depths, resid, max_breaks=None, min_seg=3,
                 cand = (got[0], got[1], cuts)
         if cand is not None and cand[0] < gain * best_err:
             best_err, best_vals, best_cuts = cand
+
+    # Прежняя структура удерживается, если новая не лучше её заметно. Проверка
+    # min_step здесь снята: прошлый разрыв уже доказал себя, и придираться к
+    # величине ступени на кадре, где она временно съёжилась, значит вернуть
+    # ровно то дрожание, ради которого всё и делается.
+    if sticky and prior_edges is not None and len(prior_edges):
+        cuts = tuple(int(c) for c in np.searchsorted(d, prior_edges)
+                     if min_seg <= c <= n - min_seg)
+        cuts = tuple(sorted(set(cuts)))
+        if cuts and not any(cuts[i + 1] - cuts[i] < min_seg for i in range(len(cuts) - 1)):
+            got = evaluate(cuts, check_step=False)
+            if got is not None and got[0] <= best_err * sticky:
+                best_vals, best_cuts = got[1], cuts
+
     edges = np.array([(d[c - 1] + d[c]) / 2 for c in best_cuts])
     return edges, best_vals
 
 
-def _fit_parallel_walls(data, rails, window=0.55, prior=None):
+def _fit_parallel_walls(data, rails, window=0.55, prior=None, beta_prior=BETA_PRIOR,
+                        sticky=WIDTH_STICKY, floor=MIN_HALF_WIDTH):
     """Шаг 3: согласованная по всему кадру форма тоннеля.
 
     Опора — ближняя зона: там точек на порядок больше и оценка среза устойчива,
@@ -449,6 +520,7 @@ def _fit_parallel_walls(data, rails, window=0.55, prior=None):
     DEPTH_SCALE, его прямо и сравниваем с невязкой), и радиус физически возможен
     (MIN_RADIUS).
     """
+    prior_edges = (prior or {}).get("edges")
     seeded = {}
     for name in ("left", "right"):
         d, o = data[name]
@@ -473,14 +545,15 @@ def _fit_parallel_walls(data, rails, window=0.55, prior=None):
     # частично утекает в форму, а найдя ступень, форму надо пересчитать уже без
     # неё. Больше двух заходов не нужно — дальше ничего не меняется.
     for _ in range(3):
-        shape, seeded, rail_state = _converge(seeded, rail_state, segs, window)
+        shape, seeded, rail_state = _converge(seeded, rail_state, segs, window, beta_prior)
         if shape is None:
             return None, seeded, rail_state
         # Именно здесь, а не после цикла: edges обязаны отвечать тем участкам,
         # по которым только что посчитана модель, иначе ширины и границы
         # разъезжаются на один заход.
         shape["edges"] = edges
-        new_segs, new_edges, new_seeded, changed = _resegment(seeded, shape, window)
+        new_segs, new_edges, new_seeded, changed = _resegment(
+            seeded, shape, window, prior_edges=prior_edges, sticky=sticky, floor=floor)
         if not changed:
             break
         segs, edges, seeded = new_segs, new_edges, new_seeded
@@ -506,15 +579,17 @@ def _prior_seed(prior, side, offsets, window, min_support=3):
     return float(w)
 
 
-def _converge(seeded, rail_state, segs, window):
+def _converge(seeded, rail_state, segs, window, beta_prior=BETA_PRIOR):
     """Попеременное уточнение "модель -> её инлайеры -> модель" при фиксированной
     разбивке на участки ширины."""
     shape = None
     for _ in range(4):
-        straight = _solve_shape(seeded, rail_state, curvature=False, segs=segs)
+        straight = _solve_shape(seeded, rail_state, curvature=False, segs=segs,
+                                beta_prior=beta_prior)
         if straight is None:
             return None, seeded, rail_state
-        arc = _solve_shape(seeded, rail_state, curvature=True, segs=segs)
+        arc = _solve_shape(seeded, rail_state, curvature=True, segs=segs,
+                           beta_prior=beta_prior)
         pick, kind = straight, "straight"
         if arc is not None and arc["rms"] < CURVE_GAIN * straight["rms"] \
                 and abs(arc["alpha"]) > CURVE_SNR * arc["rms"]:
@@ -552,7 +627,8 @@ def _converge(seeded, rail_state, segs, window):
     return shape, seeded, rail_state
 
 
-def _resegment(seeded, shape, window):
+def _resegment(seeded, shape, window, prior_edges=None, sticky=WIDTH_STICKY,
+               floor=MIN_HALF_WIDTH):
     """Ищет разрывы ширины по остаткам "срез минус форма" на каждой стороне.
 
     Смотрит на ВСЕ срезы, а не только на инлайеры текущей модели. Иначе разрыв
@@ -571,7 +647,8 @@ def _resegment(seeded, shape, window):
             continue
         sgn = -1.0 if name == "left" else +1.0
         resid = o - sgn * np.polyval(_axis_offset_coeffs(shape), d)
-        e, vals = _segment_width(d, resid)
+        e, vals = _segment_width(d, resid, sticky=sticky, floor=floor,
+                                 prior_edges=(prior_edges or {}).get(name))
         if len(e) == 0:
             continue
         idx = np.searchsorted(e, d)
@@ -690,7 +767,9 @@ RAIL_ROLES = frozenset({"floor", "axis", "rows"})
 
 def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI,
                         use_rails=True, rail_roles=RAIL_ROLES, prior=None,
-                        near_gate=None, surface_tol=None, frame=None):
+                        near_gate=None, surface_tol=None, frame=None,
+                        beta_prior=BETA_PRIOR, sticky=WIDTH_STICKY,
+                        min_half_width=MIN_HALF_WIDTH):
     """Полный проход: опора -> координаты пути -> общая форма тоннеля.
 
     use_rails=False принудительно отключает рельсы целиком — это режим
@@ -810,7 +889,9 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
         rd_fit, ru_fit = rd[fit_mask], ru_all[fit_mask]
     else:
         rd_fit, ru_fit = np.zeros(0), np.zeros(0)
-    shape, seeded, rail_state = _fit_parallel_walls(data, (rd_fit, ru_fit), prior=prior)
+    shape, seeded, rail_state = _fit_parallel_walls(data, (rd_fit, ru_fit), prior=prior,
+                                                   beta_prior=beta_prior, sticky=sticky,
+                                                   floor=min_half_width)
     if shape is None:
         return None
 

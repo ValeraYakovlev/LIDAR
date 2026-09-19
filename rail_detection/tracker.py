@@ -80,16 +80,35 @@ class TunnelTracker:
                             if self.accumulate > 1 else None)
         self.merged = None      # слитое облако последнего кадра (для отрисовки)
         self.n_native = 0       # сколько точек в нём от самого кадра
+        self.edges = None       # структура разрывов ширины прошлого кадра
 
     @property
     def state(self):
-        """Подсказка для следующего кадра: медианные полуширины по окну и
-        границы тоннеля в координатах сенсора для отсечения точек."""
+        """Подсказка для следующего кадра: медианные полуширины по окну,
+        границы тоннеля в координатах сенсора для отсечения точек и структура
+        разрывов ширины, СДВИНУТАЯ на пройденный путь.
+
+        Сдвиг обязателен и он же делает подсказку осмысленной: разрыв ширины —
+        это место в тоннеле (торец платформы, начало раскрытия), и при движении
+        вперёд оно приближается ровно на Δs. Передавать его без сдвига значило бы
+        утверждать, что тоннель едет вместе с поездом.
+
+        Без измеренного Δs структура не передаётся вовсе: лучше пересчитать её
+        заново, чем приложить к текущему кадру устаревшие на полтора метра
+        границы.
+        """
         if not self.alpha_hist:
             return None
-        return {"widths": {side: (float(np.median(h)) if h else None)
-                           for side, h in self.width_hist.items()},
-                "bounds": self.bounds}
+        out = {"widths": {side: (float(np.median(h)) if h else None)
+                          for side, h in self.width_hist.items()},
+               "bounds": self.bounds}
+        shift = (self.accumulator.last.get("shift")
+                 if self.accumulator is not None and self.accumulator.last.get("ok")
+                 else None)
+        if self.edges is not None and shift is not None and np.isfinite(shift):
+            out["edges"] = {side: (e - shift) for side, e in self.edges.items()
+                            if e is not None and len(e)}
+        return out
 
     def update(self, points, steps=1, **kwargs):
         """Обрабатывает очередной кадр записи. Возвращает тот же dict, что и
@@ -124,6 +143,9 @@ class TunnelTracker:
         for side in ("left", "right"):
             if res[side] is not None:
                 self.width_hist[side].append(res[side]["widths"][0])
+        self.edges = {side: (np.asarray(res[side]["edges"], dtype=float)
+                             if res[side] is not None else None)
+                      for side in ("left", "right")}
 
         _apply_alpha(res, float(np.median(self.alpha_hist)))
         self.bounds = _wall_bounds(res)

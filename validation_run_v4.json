@@ -1,0 +1,523 @@
+{
+ "purpose": "ЗАМОРОЖЕННЫЙ валидационный ПРОГОН для экспериментов 6-10",
+ "bag": "roundT_doubleT",
+ "n_frames_total": 252,
+ "stride": 2,
+ "n_used": 126,
+ "why_this_run": "самый трудный по текущей метрике (97.6% против 98.6-100% у остальных) И самый несимметричный: 60% кадров имеют сегмент ширины больше 3.5 м — двухпутный участок, где тоннель реально раскрыт. Скачок курса при раздробленной ширине на нём в 16 раз больше, чем при одной — максимум по всем записям",
+ "never_held_out_before": true,
+ "caveat": "прогон участвовал в разработке §16-§20 как часть dev, поэтому девственным не является. Но отложенным он не был ни разу, в отличие от doubleT_platform (четыре раза)",
+ "baseline_before": {
+  "both_walls_pct": 97.6,
+  "n": "123/126",
+  "source": "knowledge.md §20, коммит 2ab733b"
+ },
+ "frozen_before": "любых изменений алгоритма в экспериментах 6-10",
+ "protocol": "замер делается ОДИН раз, после того как все решения приняты по dev_runs_v3.json",
+ "test_set": [
+  {
+   "bag": "roundT_doubleT",
+   "frame": 0
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 2
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 4
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 6
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 8
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 10
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 12
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 14
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 16
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 18
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 20
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 22
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 24
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 26
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 28
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 30
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 32
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 34
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 36
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 38
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 40
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 42
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 44
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 46
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 48
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 50
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 52
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 54
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 56
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 58
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 60
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 62
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 64
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 66
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 68
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 70
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 72
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 74
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 76
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 78
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 80
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 82
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 84
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 86
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 88
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 90
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 92
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 94
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 96
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 98
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 100
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 102
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 104
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 106
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 108
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 110
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 112
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 114
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 116
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 118
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 120
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 122
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 124
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 126
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 128
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 130
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 132
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 134
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 136
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 138
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 140
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 142
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 144
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 146
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 148
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 150
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 152
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 154
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 156
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 158
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 160
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 162
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 164
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 166
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 168
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 170
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 172
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 174
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 176
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 178
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 180
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 182
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 184
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 186
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 188
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 190
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 192
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 194
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 196
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 198
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 200
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 202
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 204
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 206
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 208
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 210
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 212
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 214
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 216
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 218
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 220
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 222
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 224
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 226
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 228
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 230
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 232
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 234
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 236
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 238
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 240
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 242
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 244
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 246
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 248
+  },
+  {
+   "bag": "roundT_doubleT",
+   "frame": 250
+  }
+ ]
+}
