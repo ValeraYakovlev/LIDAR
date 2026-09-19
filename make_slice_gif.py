@@ -38,7 +38,7 @@ from matplotlib.patches import Polygon, Rectangle
 from PIL import Image
 
 from rail_detection import bag_path, iter_frames, side_offset, to_track_coords
-from rail_detection.roll import frame_roll
+from rail_detection.roll import rail_pose_track
 from rail_detection.tracker import TunnelTracker
 
 # Габарит: 2.2 м в ширину, 3.3 м в высоту, центр между рельсами.
@@ -74,36 +74,59 @@ U_LIM, V_LIM = 5.0, 5.0
 MIN_CLUSTER = 8         # вокселей 10 см в срезе, чтобы назвать это скоплением
 
 
+# Где мерить крен: чаще, чем срезы показа, и не дальше POSE_MAX_DEPTH. Предел
+# измерен: на трёх чистых прогонах крен относительно ближней зоны держится в
+# ±0.2° до 28–34 м, а на 40–50 м уходит до −3…−4.6° — головок там слишком мало,
+# и «самый высокий бин» ловит мусор. Дальше предела крен не меряется, а
+# ДЕРЖИТСЯ таким, каким он был на самом дальнем надёжном участке.
+POSE_MAX_DEPTH = 34.0
+POSE_DEPTHS = np.arange(4.0, POSE_MAX_DEPTH + 0.1, 2.0)
+
+
 def gauge_pose(points, res):
     """Крен и центр габарита по рельсам этого кадра: список (d, крен, u_c, v_c).
 
-    Центр — середина между головками рельсов, переведённая в координаты пути;
-    крен — по разнице высот двух головок (два пика профиля пола). Меряется по
-    СЫРОМУ кадру, а не по слитому: накопленные точки прошлых кадров лежат только
-    в клиренс-полосе, рельсов в них нет.
+    Головки рельсов меряются ТАМ, ГДЕ ИМ ПОЛОЖЕНО БЫТЬ — у u = ±колея/2 от оси
+    пути, — а не ищутся заново детектором. Детектор дальше 20–25 м на двухпутном
+    участке хватал чужую пару, и габарит уезжал на полтора метра вбок (см.
+    rail_detection.roll). Меряется по СЫРОМУ кадру, а не по слитому: накопленные
+    точки прошлых кадров лежат только в клиренс-полосе, рельсов в них нет.
     """
-    fr = frame_roll(points, res["frame"]["rail_records"])
-    out = []
-    for (d, roll), (_, xc, zh) in zip(fr["rail"], fr["centers"]):
-        _, uc, vc = to_track_coords(np.array([xc]), np.array([-d]), np.array([zh]),
-                                    res["frame"])
-        out.append((d, roll, float(uc[0]), float(vc[0])))
-    return out
+    gauge = res["frame"].get("gauge") or 1.60
+    d, u, v = to_track_coords(points['x'].astype(float), points['y'].astype(float),
+                              points['z'].astype(float), res["frame"])
+    pose = rail_pose_track(d, u, v, gauge, POSE_DEPTHS,
+                           lambda D: max(1.0, half_thick(D)))
+    # Одиночные срезы, где одна из головок не нашлась и взят бин пониже, дают
+    # крен −9…−10° при соседях −3…−5°. Возвышение рельса так не скачет, поэтому
+    # такие срезы отбрасываются до всякой медианы: иначе в окне из трёх срезов
+    # хватает двух выбросов, и габарит на кадр переваливается на пять градусов.
+    if len(pose) >= 4:
+        r = np.array([q[1] for q in pose])
+        med = np.median(r)
+        mad = 1.4826 * np.median(np.abs(r - med))
+        tol = max(3.0 * mad, np.radians(1.5))
+        pose = [q for q in pose if abs(q[1] - med) <= tol]
+    return pose
 
 
-def pose_at(pose, D):
+def pose_at(pose, D, k_min=3):
     """Крен и центр на глубине D: медиана по рельсовым срезам в окне ±POSE_WINDOW.
 
     Медиана, а не значение ближайшего среза: по одному срезу крен меряется с
-    шумом (см. exp_roll_correlation.py), а возвышение рельса меняется плавно —
-    на переходной кривой за десятки метров. Там, где рельсов не видно (дальше
-    40 м), берётся медиана по всему кадру: это последнее, что про путь известно.
+    шумом и изредка выскакивает до −9…−10° (одна из головок не нашлась, и взят
+    бин пониже), а возвышение рельса меняется плавно — на переходной кривой за
+    десятки метров. Если в окне меньше k_min срезов (дальше предела замера или
+    там, где рельсов не видно), берутся k_min БЛИЖАЙШИХ по глубине: за пределом
+    это самый дальний надёжный участок, то есть последнее, что про путь известно.
+    Прежняя версия брала тут медиану по всему кадру, и габарит на 40 и на 50 м
+    получал разный крен без всякой причины в данных.
     """
     if not pose:
         return 0.0, 0.0, 0.0
     P = np.array(pose)
     near = np.abs(P[:, 0] - D) <= POSE_WINDOW
-    use = P[near] if near.sum() >= 3 else P
+    use = P[near] if near.sum() >= k_min else P[np.argsort(np.abs(P[:, 0] - D))[:k_min]]
     return float(np.median(use[:, 1])), float(np.median(use[:, 2])), float(np.median(use[:, 3]))
 
 

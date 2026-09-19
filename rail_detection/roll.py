@@ -114,3 +114,70 @@ def frame_roll(points, rail_records):
     med = lambda v: float(np.median([t[1] for t in v])) if v else None
     return {"rail": rails, "ceil": ceils, "pairs": pairs, "centers": centers,
             "rail_med": med(rails), "ceil_med": med(ceils)}
+
+
+# --- Крен по рельсам В ИЗВЕСТНОМ МЕСТЕ -----------------------------------------
+#
+# Детектор рельсов (`find_rails`) ищет пару пиков заново в каждом срезе, и дальше
+# 20–25 м на двухпутном участке регулярно хватает ЧУЖУЮ пару: на doubleT_obstacle
+# в кадре 8 срезы 32.5 и 37.5 м дали центр колеи на u = +1.52 и +2.35 м при оси на
+# нуле. Геометрия такие срезы отбрасывает (RAIL_WINDOW = 0.30 м от оси), а поза
+# габарита их брала — и на 30 м медиана из трёх срезов, два из которых чужие,
+# уводила габарит на полтора метра вбок.
+#
+# Но искать пару заново и не нужно: ось пути и колея уже известны. Поэтому
+# головки меряются там, где им положено быть, — у u = ±колея/2 от оси, — и это
+# работает и там, где детектор промахнулся.
+
+HEAD_SEARCH = 0.25     # м: окно поиска головки вокруг ожидаемого положения
+HEAD_BIN = 0.02        # м: шаг профиля по u внутри окна
+GAUGE_TOL = 0.15       # м: найденная колея не может отличаться от известной больше
+
+
+def _head(u, v, u_expected):
+    """Головка рельса в окне вокруг ожидаемого положения: самый высокий бин
+    профиля. В узком окне у пола выше головки рельса ничего нет — скрепления и
+    шпала ниже, контактный рельс снаружи окна."""
+    m = np.abs(u - u_expected) < HEAD_SEARCH
+    if m.sum() < 10:
+        return None
+    uu, vv = u[m], v[m]
+    edges = np.arange(u_expected - HEAD_SEARCH, u_expected + HEAD_SEARCH + HEAD_BIN, HEAD_BIN)
+    idx = np.digitize(uu, edges)
+    best = None
+    for i in range(1, len(edges)):
+        k = idx == i
+        if k.sum() < 3:
+            continue
+        h = float(np.percentile(vv[k], HEAD_PCT))
+        if best is None or h > best[1]:
+            best = ((edges[i - 1] + edges[i]) / 2, h)
+    return best
+
+
+def rail_pose_track(d, u, v, gauge, depths, half_thick):
+    """Крен и середина между головками по срезам, в КООРДИНАТАХ ПУТИ.
+
+    d, u, v — точки кадра в координатах пути; gauge — колея кадра.
+    Для каждой глубины: головки ищутся у u = ±gauge/2, пара принимается, только
+    если найденная колея не дальше GAUGE_TOL от известной. Возвращает список
+    (d, крен, u_c, v_c).
+    """
+    sel = (v > -0.5) & (v < 0.8) & (np.abs(u) < gauge / 2 + HEAD_SEARCH + 0.1)
+    d, u, v = d[sel], u[sel], v[sel]
+    out = []
+    for D in depths:
+        ht = half_thick(D)
+        m = (d > D - ht) & (d < D + ht)
+        if m.sum() < 30:
+            continue
+        L = _head(u[m], v[m], -gauge / 2)
+        R = _head(u[m], v[m], +gauge / 2)
+        if L is None or R is None:
+            continue
+        g = R[0] - L[0]
+        if abs(g - gauge) > GAUGE_TOL:
+            continue
+        out.append((float(D), float(np.arctan2(R[1] - L[1], g)),
+                    float((L[0] + R[0]) / 2), float((L[1] + R[1]) / 2)))
+    return out
