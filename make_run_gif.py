@@ -39,8 +39,8 @@ from rail_detection import (DEFAULT_BAGS, bag_path, fit_tunnel_geometry, frame_c
 from rail_detection.tunnel_frame import tunnel_center_coeffs
 from rail_detection.tracker import TunnelTracker
 from rail_detection.tunnel_frame import V_HI, V_LO
-from rail_detection.gauge import (TRUST_DEPTH, ObstacleWatch, corridor_halfwidth,
-                                  intrusions)
+from rail_detection.gauge import (TRUST_DEPTH, ObstacleWatch, cluster_obstacles,
+                                  corridor_halfwidth)
 
 DEPTH_MAX = 180.0  # тоннель просматривается дальше 120 м, и это видно на картинке
 X_LIM = (-10.0, 10.0)
@@ -130,16 +130,19 @@ def collect(dataset, bag, stride, max_frames=None, track=True, depth_max=DEPTH_M
         # мешает проехать, а не как то, что выглядит необычно.
         gauge = None
         if res is not None:
-            it = intrusions(points, res)
+            clusters, inside = cluster_obstacles(points, res)
             sh = (tracker.accumulator.last.get("shift")
                   if tracker is not None and tracker.accumulator is not None
                   and tracker.accumulator.last.get("ok") else None)
-            confirmed = watch.update(it["depth"], sh)
-            hit = np.where(it["mask"])[0]
+            confirmed = watch.update(clusters[0]["depth"] if clusters else None, sh)
+            hit = np.where(inside)[0]
             if len(hit) > MAX_GRAY // 4:
                 hit = rng.choice(hit, MAX_GRAY // 4, replace=False)
+            reach = [tracked_depth(res, sd) for sd in ("left", "right")]
+            reach = [q for q in reach if q]
             gauge = {"pts": np.column_stack([x[hit], depth[hit]]).astype(np.float32),
-                     "depth": it["depth"], "confirmed": confirmed, "reach": it["reach"]}
+                     "n_clusters": len(clusters), "confirmed": confirmed,
+                     "reach": float(np.mean(reach)) if reach else None}
 
         rec = {
             "idx": idx, "n_total": n_total, "gauge": gauge,
@@ -174,6 +177,19 @@ def collect(dataset, bag, stride, max_frames=None, track=True, depth_max=DEPTH_M
         print(f"\r  кадр {idx}/{n_total}", end="", flush=True)
     print()
     return out
+
+
+def _verdict(g):
+    """Что метод утверждает про габарит. Различаются три состояния, и это не
+    придирка: «кластер есть, но не подтверждён» и «подтверждён» — разные вещи,
+    и смешивать их значило бы выдавать шум за находку."""
+    if g is None:
+        return "\nгабарит не построен"
+    if g.get("confirmed"):
+        return f"\nПРЕПЯТСТВИЕ в габарите на {g['confirmed']:.0f} м"
+    if g.get("n_clusters"):
+        return f"\nкластер в габарите ({g['n_clusters']}), не подтверждён по движению"
+    return "\nгабарит чист"
 
 
 def render(records, bag, depth_max=DEPTH_MAX, dpi=120):
@@ -265,9 +281,7 @@ def render(records, bag, depth_max=DEPTH_MAX, dpi=120):
             head = (f"{bag}  кадр {r['idx']}/{r['n_total']}\n{shape}\n"
                     + "   ".join(parts)
                     + f"\nзелёная — граница тоннеля, красная — габарит поезда"
-                    + (f"\nПРЕПЯТСТВИЕ на {r['gauge']['confirmed']:.0f} м"
-                       if r.get("gauge") and r["gauge"].get("confirmed")
-                       else "\nпуть свободен"))
+                    + _verdict(r.get("gauge")))
 
         # Подпись полос: без неё раскраска ничего не объясняет, а именно
         # объяснение здесь и есть цель.
