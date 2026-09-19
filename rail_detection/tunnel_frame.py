@@ -769,7 +769,7 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
                         use_rails=True, rail_roles=RAIL_ROLES, prior=None,
                         near_gate=None, surface_tol=None, frame=None,
                         beta_prior=BETA_PRIOR, sticky=WIDTH_STICKY,
-                        min_half_width=MIN_HALF_WIDTH):
+                        min_half_width=MIN_HALF_WIDTH, sides=None):
     """Полный проход: опора -> координаты пути -> общая форма тоннеля.
 
     use_rails=False принудительно отключает рельсы целиком — это режим
@@ -877,6 +877,13 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
     data = {name: _side_envelope(db, ub, sign, depth_bins, gate_depth=gate_depth,
                                  gate_u=float(near_gate) if near_gate else NEAR_GATE_U)
             for name, sign in (("left", -1.0), ("right", +1.0))}
+    # Принудительное отключение стороны — для замера «хватает ли одной стены».
+    # Сторона не «пропадает», а исключается из подгонки: срезы по ней есть, но
+    # форму они не определяют. Это ровно то, что должно происходить, когда
+    # сторона уехала на соседний путь или в проём платформы.
+    if sides is not None:
+        data = {name: (val if name in sides else (np.zeros(0), np.zeros(0)))
+                for name, val in data.items()}
     ru_all = ((rxc - np.polyval(base, rd)) * np.cos(np.arctan(base[0]))
               if len(rd) else np.zeros(0))
     # В подгонку идут только БЛИЖНИЕ рельсы. Дальше 15 м детектор рельс уже
