@@ -15,8 +15,11 @@
 траектории: на повороте оно режет тоннель не наискось, а поперёк, потому что
 поправка на курс уже внесена.
 
-Габарит — паспортный кузов вагона 81-717/714: 2670 мм в ширину, 3650 мм в
-высоту от уровня головок рельсов.
+Габарит — прямоугольник 2.2 × 3.3 м, центр — между головками рельсов, низ —
+на плоскости головок, и он НАКЛОНЁН по реальному крену пути: на кривой наружный
+рельс поднят, вагон стоит на рельсах, значит и его сечение повёрнуто так же
+(`rail_detection.roll`). Для сравнения тем же размером рисуется и ненаклонённый
+габарит — тонким пунктиром.
 
 Запуск:
     python make_slice_gif.py --bag doubleT_obstacle
@@ -31,12 +34,17 @@ import numpy as np
 matplotlib.use("Agg")
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Polygon, Rectangle
 from PIL import Image
 
 from rail_detection import bag_path, iter_frames, side_offset, to_track_coords
-from rail_detection.gauge import HALF_WIDTH, V_TOP
+from rail_detection.roll import frame_roll
 from rail_detection.tracker import TunnelTracker
+
+# Габарит: 2.2 м в ширину, 3.3 м в высоту, центр между рельсами.
+HALF_WIDTH = 1.10
+GAUGE_H = 3.30
+POSE_WINDOW = 10.0   # м: крен на срезе — медиана по рельсовым срезам в этом окне
 
 DEPTHS = [5, 10, 20, 30, 40, 50, 55, 60]   # на каких глубинах резать, м
 
@@ -51,7 +59,7 @@ def half_thick(D):
 # подсвечивается путь: замер дал скопление «в габарите» в 101 кадре из 101, все
 # на v ≈ 0. Порог 0.25 м проходит над путём и оставляет видимым всё, что выше
 # четверти метра. Ниже — слепая зона, и это записано честно.
-GAUGE_BOTTOM = 0.25
+GAUGE_BOTTOM = 0.25   # м над плоскостью головок, в НАКЛОНЁННОЙ системе
 # Зона прохода — не константа, а то, что ОСТАЛОСЬ между габаритом и найденной
 # стеной. Фиксированную ширину задать нельзя: в этом тоннеле стена стоит на
 # 2.37 м, и зона в 2.6 м подсвечивала бы саму стену на каждом срезе. Граница
@@ -66,12 +74,62 @@ U_LIM, V_LIM = 5.0, 5.0
 MIN_CLUSTER = 8         # вокселей 10 см в срезе, чтобы назвать это скоплением
 
 
+def gauge_pose(points, res):
+    """Крен и центр габарита по рельсам этого кадра: список (d, крен, u_c, v_c).
+
+    Центр — середина между головками рельсов, переведённая в координаты пути;
+    крен — по разнице высот двух головок (два пика профиля пола). Меряется по
+    СЫРОМУ кадру, а не по слитому: накопленные точки прошлых кадров лежат только
+    в клиренс-полосе, рельсов в них нет.
+    """
+    fr = frame_roll(points, res["frame"]["rail_records"])
+    out = []
+    for (d, roll), (_, xc, zh) in zip(fr["rail"], fr["centers"]):
+        _, uc, vc = to_track_coords(np.array([xc]), np.array([-d]), np.array([zh]),
+                                    res["frame"])
+        out.append((d, roll, float(uc[0]), float(vc[0])))
+    return out
+
+
+def pose_at(pose, D):
+    """Крен и центр на глубине D: медиана по рельсовым срезам в окне ±POSE_WINDOW.
+
+    Медиана, а не значение ближайшего среза: по одному срезу крен меряется с
+    шумом (см. exp_roll_correlation.py), а возвышение рельса меняется плавно —
+    на переходной кривой за десятки метров. Там, где рельсов не видно (дальше
+    40 м), берётся медиана по всему кадру: это последнее, что про путь известно.
+    """
+    if not pose:
+        return 0.0, 0.0, 0.0
+    P = np.array(pose)
+    near = np.abs(P[:, 0] - D) <= POSE_WINDOW
+    use = P[near] if near.sum() >= 3 else P
+    return float(np.median(use[:, 1])), float(np.median(use[:, 2])), float(np.median(use[:, 3]))
+
+
+def to_gauge_frame(u, v, theta, uc, vc):
+    """Координаты в системе вагона: u' — вдоль плоскости головок рельсов,
+    v' — по нормали к ней. Поворот на крен вокруг середины между рельсами."""
+    du, dv = u - uc, v - vc
+    c, s = np.cos(theta), np.sin(theta)
+    return du * c + dv * s, -du * s + dv * c
+
+
+def gauge_corners(theta, uc, vc, bottom=0.0):
+    """Углы наклонённого прямоугольника габарита в координатах пути."""
+    c, s = np.cos(theta), np.sin(theta)
+    pts = [(-HALF_WIDTH, bottom), (HALF_WIDTH, bottom), (HALF_WIDTH, GAUGE_H),
+           (-HALF_WIDTH, GAUGE_H)]
+    return np.array([(uc + a * c - b * s, vc + a * s + b * c) for a, b in pts])
+
+
 def slice_clusters(u, v, half_width=HALF_WIDTH):
     """Скопления в заданной зоне на одном срезе. DBSCAN по (u, v): на срезе
     предмет — это связное пятно, а не набор одиночных отражений."""
     from sklearn.cluster import DBSCAN
 
-    inside = (np.abs(u) < half_width) & (v > GAUGE_BOTTOM) & (v < V_TOP)
+    # u, v здесь уже в системе вагона (to_gauge_frame)
+    inside = (np.abs(u) < half_width) & (v > GAUGE_BOTTOM) & (v < GAUGE_H)
     if inside.sum() < MIN_CLUSTER:
         return inside, []
     pts = np.column_stack([u[inside], v[inside]])
@@ -93,7 +151,7 @@ def slice_clusters(u, v, half_width=HALF_WIDTH):
     return inside, out
 
 
-def slice_walkway(u, v, walls):
+def slice_walkway(u, v, walls, ug, vg):
     """Скопления в проходе: между габаритом и стеной, но не у самой стены.
 
     Граница берётся от найденной геометрии, а не задаётся числом: ширина прохода
@@ -107,9 +165,8 @@ def slice_walkway(u, v, walls):
         w = walls.get(side)
         if w is None:
             continue
-        su = sgn * u
-        band |= (su > HALF_WIDTH) & (su < w - WALL_MARGIN)
-    inside = band & (v > GAUGE_BOTTOM) & (v < V_TOP)
+        band |= (sgn * ug > HALF_WIDTH) & (sgn * u < w - WALL_MARGIN)
+    inside = band & (vg > GAUGE_BOTTOM) & (vg < GAUGE_H)
     if inside.sum() < MIN_CLUSTER:
         return inside, []
     pts = np.column_stack([u[inside], v[inside]])
@@ -143,6 +200,7 @@ def collect(dataset, bag, stride, max_frames):
         res = tracker.update(points, steps=stride)
         if res is None:
             continue
+        pose = gauge_pose(points, res)
         pts = tracker.merged
         x = pts['x'].astype(float)
         y = pts['y'].astype(float)
@@ -158,7 +216,9 @@ def collect(dataset, bag, stride, max_frames):
             if len(uu) > 6000:
                 k = rng.choice(len(uu), 6000, replace=False)
                 uu, vv = uu[k], vv[k]
-            in_g, cl_g = slice_clusters(uu, vv, HALF_WIDTH)
+            theta, uc, vc = pose_at(pose, D)
+            ug, vg = to_gauge_frame(uu, vv, theta, uc, vc)
+            in_g, cl_g = slice_clusters(ug, vg, HALF_WIDTH)
             # Где стоят стены на этой глубине — по геометрии кадра
             walls = {}
             for side in ("left", "right"):
@@ -167,11 +227,14 @@ def collect(dataset, bag, stride, max_frames):
                 w = side_offset(res["shape"], side, np.array([float(D)]))
                 if w is not None and np.isfinite(w[0]):
                     walls[side] = float(w[0])
-            in_s, cl_s = slice_walkway(uu, vv, walls)
+            in_s, cl_s = slice_walkway(uu, vv, walls, ug, vg)
             panels.append({"u": uu.astype(np.float32), "v": vv.astype(np.float32),
                            "in_g": in_g, "in_s": in_s & ~in_g,
-                           "cl_g": cl_g, "cl_s": cl_s, "depth": D})
-        out.append({"idx": idx, "n_total": n_total, "panels": panels})
+                           "cl_g": cl_g, "cl_s": cl_s, "depth": D,
+                           "pose": (theta, uc, vc)})
+        rolls = [r for _, r, _, _ in pose]
+        out.append({"idx": idx, "n_total": n_total, "panels": panels,
+                    "roll": float(np.median(rolls)) if rolls else None})
         print(f"\r  кадр {idx}/{n_total}", end="", flush=True)
     print()
     return out
@@ -196,15 +259,23 @@ def render(records, bag, dpi=110):
             if p["in_g"].any():
                 ax.scatter(p["u"][p["in_g"]], p["v"][p["in_g"]], s=3.2,
                            c="#d1495b", alpha=0.95)
-            ax.add_patch(Rectangle((-HALF_WIDTH, GAUGE_BOTTOM), 2 * HALF_WIDTH,
-                                   V_TOP - GAUGE_BOTTOM, fill=False,
-                                   edgecolor="#d1495b", lw=1.6))
-            ax.axhline(0, c="#7a5c3a", lw=0.8)      # уровень головок рельсов
+            theta, uc, vc = p["pose"]
+            # Тот же габарит без наклона и С ТЕМ ЖЕ центром: отличаться от
+            # красного он обязан только креном, иначе глаз увидит две разницы.
+            ax.add_patch(Polygon(gauge_corners(0.0, uc, vc), closed=True, fill=False,
+                                 edgecolor="#6b7280", lw=0.8, ls="--"))
+            ax.add_patch(Polygon(gauge_corners(theta, uc, vc), closed=True, fill=False,
+                                 edgecolor="#d1495b", lw=1.7))
+            # плоскость головок рельсов — наклонённая, по ней и стоит габарит
+            c_, s_ = np.cos(theta), np.sin(theta)
+            ax.plot([uc - 0.8 * c_, uc + 0.8 * c_], [vc - 0.8 * s_, vc + 0.8 * s_],
+                    c="#7a5c3a", lw=2.0)
             ax.set_xlim(-U_LIM, U_LIM)
             ax.set_ylim(-1.0, V_LIM)
             ax.set_aspect("equal")
             ax.tick_params(labelsize=6)
-            title = f"{p['depth']} м  (±{half_thick(p['depth']):.1f})"
+            title = (f"{p['depth']} м  (±{half_thick(p['depth']):.1f}), "
+                     f"крен {np.degrees(p['pose'][0]):+.1f}°")
             colour = "black"
             if p["cl_g"]:
                 big = max(p["cl_g"], key=lambda c: c["n"])
@@ -226,10 +297,11 @@ def render(records, bag, dpi=110):
         if near_track:
             parts.append("рядом с путём на " + ", ".join(near_track) + " м")
         verdict = "   |   ".join(parts) if parts else "чисто на всех срезах"
-        fig.suptitle(f"{bag}  кадр {r['idx']}/{r['n_total']}   —   срезы "
-                     f"ПЕРПЕНДИКУЛЯРНО траектории, красный прямоугольник — габарит "
-                     f"вагона 2.67×3.65 м, оранжевое — предмет в проходе "
-                     f"между габаритом и стеной\n{verdict}", fontsize=10)
+        roll = f"{np.degrees(r['roll']):+.2f}°" if r.get("roll") is not None else "—"
+        fig.suptitle(f"{bag}  кадр {r['idx']}/{r['n_total']}   —   срезы ПЕРПЕНДИКУЛЯРНО "
+                     f"траектории. Красный — габарит {2 * HALF_WIDTH:.1f}×{GAUGE_H:.1f} м, "
+                     f"наклонён по крену рельсов (кадр {roll}); пунктир — тот же без "
+                     f"наклона\n{verdict}", fontsize=10)
         fig.tight_layout(rect=(0, 0, 1, 0.94))
         canvas.draw()
         buf = np.asarray(canvas.buffer_rgba())[:, :, :3]
@@ -247,6 +319,7 @@ def main():
     p.add_argument("--max-frames", type=int, default=None)
     p.add_argument("--out", default="output")
     p.add_argument("--fps", type=float, default=8.0)
+    p.add_argument("--tag", default="_AFTER", help="суффикс имени GIF")
     a = p.parse_args()
 
     print(f"=== {a.bag} (шаг {a.stride}) ===")
@@ -257,11 +330,15 @@ def main():
     imgs = render(recs, a.bag)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    path = out / f"slices_{a.bag}.gif"
+    path = out / f"slices_{a.bag}{a.tag}.gif"
     imgs[0].save(path, save_all=True, append_images=imgs[1:],
                  duration=int(1000 / a.fps), loop=0, optimize=True)
     n_hit = sum(1 for r in recs if any(p["cl_g"] for p in r["panels"]))
     n_near = sum(1 for r in recs if any(p["cl_s"] for p in r["panels"]))
+    rolls = [np.degrees(r["roll"]) for r in recs if r.get("roll") is not None]
+    if rolls:
+        print(f"крен рельсов по кадрам: медиана {np.median(rolls):+.2f}°, "
+              f"5-95% {np.percentile(rolls, 5):+.2f}…{np.percentile(rolls, 95):+.2f}°")
     print(f"GIF: {path} ({path.stat().st_size / 1e6:.1f} МБ)")
     print(f"кадров со скоплением В ГАБАРИТЕ: {n_hit}/{len(recs)}")
     print(f"кадров с объектом РЯДОМ С ПУТЁМ: {n_near}/{len(recs)}")
