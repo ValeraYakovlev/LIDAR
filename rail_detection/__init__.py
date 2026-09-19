@@ -15,6 +15,9 @@ from .plotting import (
     plot_bag_overlay,
 )
 from .tracking import robust_centerline
+from .accumulate import FrameAccumulator
+from .shift import estimate_shift
+from .rangeimage import surface_mask
 from .curvature import (
     fit_path,
     local_heading_deg,
@@ -41,14 +44,15 @@ from .tunnel_frame import (
     geometry_formula,
     axis_formula,
     WALL_DEPTH_BINS,
+    WALL_DEPTH_BINS_DEEP,
 )
 
 __all__ = [
     "load_frame", "iter_frames", "iter_selected_frames", "frame_count", "bag_path", "DEFAULT_BAGS", "POINT_DTYPE",
     "rail_samples", "floor_profile", "side_offset", "tracked_depth", "to_track_coords", "fit_tunnel_geometry", "wall_x",
-    "geometry_formula", "axis_formula", "tunnel_center_coeffs", "WALL_DEPTH_BINS", "eval_fit", "slope_from_fit",
+    "geometry_formula", "axis_formula", "tunnel_center_coeffs", "WALL_DEPTH_BINS", "WALL_DEPTH_BINS_DEEP", "eval_fit", "slope_from_fit",
     "find_groove_and_rails", "analyze_frame", "classify_points", "DEFAULT_DEPTH_BINS",
-    "robust_centerline",
+    "robust_centerline", "FrameAccumulator", "estimate_shift", "surface_mask",
     "fit_path", "local_heading_deg", "classify_section", "turn_direction", "describe_path",
     "fit_straight_or_arc", "ransac_poly_fit", "walls_consistent",
     "find_wall_positions", "analyze_walls", "fit_wall", "combined_wall_fit", "height_band_mask",

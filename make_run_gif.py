@@ -5,13 +5,15 @@
   сверху  — вид сверху на всю глубину кадра. Граница нарисована сплошной там,
             где она реально наблюдается, и пунктиром дальше — так сразу видно,
             докуда геометрию можно отслеживать, а где это уже продолжение
-            модели в пустоту.
+            модели в пустоту. Точки клиренс-полосы жёлтые, если они из самого
+            кадра, и синие, если подклеены из прошлых накоплением: видно, где
+            метод смотрит сам, а где опирается на накопленное.
   средняя — лента кривизны по всему прогону с бегунком текущего кадра: по
             одному кадру не видно, поворачивает путь или это шум подгонки, а на
             ленте поворот виден как сплошной участок одного знака.
   нижняя  — лента дальности наблюдения: до какой глубины держится граница.
 
-Кадры обрабатываются ПОДРЯД, с переносом геометрии между ними
+Кадры обрабатываются ПОДРЯД, со связыванием геометрии и накоплением облаков
 (rail_detection.tracker) — отключается флагом --no-track.
 
 Запуск:
@@ -47,24 +49,35 @@ EXTRAPOLATION_SHOW = 1.5  # во сколько раз за предел наб�
 ALL_BAGS = list(DEFAULT_BAGS) + ["doubleT_obstacle"]
 
 
-def collect(dataset, bag, stride, max_frames=None, track=True, depth_max=DEPTH_MAX):
+def collect(dataset, bag, stride, max_frames=None, track=True, depth_max=DEPTH_MAX,
+            accumulate=None):
     """Один проход по bag: геометрия кадра + прореженные точки для отрисовки.
 
     Точки сохраняются сразу, чтобы не читать многогигабайтный bag второй раз:
     ленты нужны целиком до того, как рисуется первый кадр.
+
+    accumulate: сколько кадров складывать со сдвигом на пройденный путь;
+        None — как настроен tracker по умолчанию (rail_detection.accumulate).
     """
     rng = np.random.default_rng(0)
-    tracker = TunnelTracker() if track else None
+    tracker = (TunnelTracker(**({} if accumulate is None else {"accumulate": accumulate}))
+               if track else None)
     out = []
     for idx, points, n_total in iter_frames(bag_path(dataset, bag), stride=stride,
                                            max_frames=max_frames):
+        res = tracker.update(points, steps=stride) if tracker else fit_tunnel_geometry(points)
+        # Рисуется то облако, по которому шла подгонка: при накоплении это
+        # несколько кадров, сложенных со сдвигом на пройденный путь.
+        if tracker is not None:
+            points, n_native = tracker.merged, tracker.n_native
+        else:
+            n_native = len(points)
+
         x = points['x'].astype(float)
         y = points['y'].astype(float)
         z = points['z'].astype(float)
         depth = -y
         vis = (depth > 0) & (depth < depth_max) & (np.abs(x) < X_LIM[1] + 2)
-
-        res = tracker.update(points, steps=stride) if tracker else fit_tunnel_geometry(points)
         band = np.zeros(len(x), dtype=bool)
         if res is not None:
             _, _, v = to_track_coords(x, y, z, res["frame"])
@@ -73,14 +86,22 @@ def collect(dataset, bag, stride, max_frames=None, track=True, depth_max=DEPTH_M
         gray_idx = np.where(vis & ~band)[0]
         if len(gray_idx) > MAX_GRAY:
             gray_idx = rng.choice(gray_idx, MAX_GRAY, replace=False)
-        band_idx = np.where(band)[0]
-        if len(band_idx) > MAX_GRAY // 2:
-            band_idx = rng.choice(band_idx, MAX_GRAY // 2, replace=False)
+        # Точки, подклеенные из прошлых кадров, рисуются отдельным цветом: иначе
+        # по картинке не отличить, где метод видит сам, а где опирается на
+        # накопленное, а это ровно то, что проверяется.
+        own = np.where(band & (np.arange(len(x)) < n_native))[0]
+        past = np.where(band & (np.arange(len(x)) >= n_native))[0]
+        cap = MAX_GRAY // 2
+        if len(own) > cap:
+            own = rng.choice(own, cap, replace=False)
+        if len(past) > cap:
+            past = rng.choice(past, cap, replace=False)
 
         rec = {
             "idx": idx, "n_total": n_total,
             "gray": np.column_stack([x[gray_idx], depth[gray_idx]]).astype(np.float32),
-            "band": np.column_stack([x[band_idx], depth[band_idx]]).astype(np.float32),
+            "band": np.column_stack([x[own], depth[own]]).astype(np.float32),
+            "past": np.column_stack([x[past], depth[past]]).astype(np.float32),
         }
         if res is None:
             rec.update(alpha=np.nan, kind=None, reach=np.nan)
@@ -136,6 +157,8 @@ def render(records, bag, depth_max=DEPTH_MAX, dpi=120):
             a.clear()
 
         ax.scatter(r["gray"][:, 0], r["gray"][:, 1], s=0.6, c="lightgray", alpha=0.5)
+        if len(r.get("past", ())):
+            ax.scatter(r["past"][:, 0], r["past"][:, 1], s=1.1, c="#5a8fc8", alpha=0.55)
         if len(r["band"]):
             ax.scatter(r["band"][:, 0], r["band"][:, 1], s=1.1, c="#c8a45a", alpha=0.7)
 
@@ -210,7 +233,8 @@ def render(records, bag, depth_max=DEPTH_MAX, dpi=120):
     return images, reach_med
 
 
-def build_one(dataset, bag, out_dir, stride, target_frames, fps, max_frames, track, depth_max):
+def build_one(dataset, bag, out_dir, stride, target_frames, fps, max_frames, track,
+              depth_max, accumulate=None):
     if stride is None:
         # Записи различаются по длине втрое (201 против 877 кадров), поэтому
         # шаг подбирается под целевую длину GIF: иначе один прогон вышел бы
@@ -218,7 +242,8 @@ def build_one(dataset, bag, out_dir, stride, target_frames, fps, max_frames, tra
         n = frame_count(bag_path(dataset, bag))
         stride = max(1, round(n / target_frames))
     print(f"\n=== {bag} (шаг {stride}) ===")
-    records = collect(dataset, bag, stride, max_frames, track=track, depth_max=depth_max)
+    records = collect(dataset, bag, stride, max_frames, track=track, depth_max=depth_max,
+                      accumulate=accumulate)
     if not records:
         print("  кадры не прочитались")
         return None
@@ -250,6 +275,9 @@ def main():
     p.add_argument("--fps", type=float, default=10.0)
     p.add_argument("--depth-max", type=float, default=DEPTH_MAX, help="глубина показа, м")
     p.add_argument("--no-track", action="store_true", help="обрабатывать кадры независимо")
+    p.add_argument("--accumulate", type=int, default=None,
+                   help="сколько кадров складывать со сдвигом на Δs "
+                        "(по умолчанию как в rail_detection.tracker; 1 — без накопления)")
     a = p.parse_args()
 
     out_dir = Path(a.out)
@@ -258,7 +286,7 @@ def main():
     summary = []
     for bag in a.bags:
         got = build_one(a.dataset, bag, out_dir, a.stride, a.target_frames, a.fps,
-                        a.max_frames, not a.no_track, a.depth_max)
+                        a.max_frames, not a.no_track, a.depth_max, a.accumulate)
         if got:
             summary.append(got)
 

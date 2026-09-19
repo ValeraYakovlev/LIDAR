@@ -14,6 +14,15 @@ from scipy.signal import find_peaks
 EXPECTED_GAUGE = 1.60
 GAUGE_TOL = 0.25
 GAUGE_LIMITS = (1.35, 1.85)   # вне этого диапазона "колея" — заведомо промах
+# Вес признака «головка рельса темнее пола» в выборе пары пиков. По умолчанию
+# ВЫКЛЮЧЕН — замер показал, что он ничего не меняет: на разработочных прогонах
+# метрика стен совпадает до кадра, а на участке с плитным основанием (§18, кадры
+# 150-200 roundT_squareT_pressureGate_squareT) совпадает и число найденных срезов
+# (367), и медиана колеи (1.650). Признак разделяет сам по себе сильно (§19), но
+# выраженность пика и близость к колее уже решают те же случаи, и добавить ему
+# нечего. Код оставлен: сам знак — измеренный факт (см. _rail_darkness), и
+# включается он одним числом, если понадобится на других данных.
+DARK_WEIGHT = 0.0
 
 DEFAULT_DEPTH_BINS = [
     (3, 5), (5, 7), (7, 9), (9, 11), (11, 13), (13, 15),
@@ -117,33 +126,60 @@ def find_groove_and_rails(points, depth_lo, depth_hi, x_range=4.0, xbin=0.05, pa
 
 def _floor_profile_xz(points, depth_lo, depth_hi, x_range=4.0, xbin=0.05):
     """Медианный профиль высоты пола Z(X) в срезе — общая заготовка для обоих
-    детекторов рельсов."""
+    детекторов рельсов. Заодно профиль ЯРКОСТИ по тем же бинам: головка рельса
+    отличается от бетона не только высотой (см. _rail_darkness)."""
     x, y, z = points['x'], points['y'], points['z']
     depth = -y
     mask = (depth >= depth_lo) & (depth < depth_hi) & (np.abs(x) < x_range)
     if mask.sum() < 200:
         return None
     xr, zr = x[mask], z[mask]
+    ir = points['intensity'][mask]
     zlo, zhi = np.percentile(zr, [1, 45])
     band = (zr >= zlo) & (zr <= zhi)
     if band.sum() < 100:
         return None
-    xb, zb = xr[band], zr[band]
+    xb, zb, ib = xr[band], zr[band], ir[band]
     bins = np.arange(-x_range, x_range + xbin, xbin)
     idx = np.digitize(xb, bins)
-    px, pz = [], []
+    px, pz, pi = [], [], []
     for i in range(1, len(bins)):
         m = idx == i
         if m.sum() >= 3:
             px.append((bins[i - 1] + bins[i]) / 2)
             pz.append(np.median(zb[m]))
+            pi.append(np.median(ib[m]))
     if len(px) < 15:
         return None
-    return np.array(px), np.array(pz), xb, zb
+    return np.array(px), np.array(pz), xb, zb, np.array(pi)
+
+
+def _rail_darkness(pi, i_peak):
+    """Насколько бин ТЕМНЕЕ окружающего пола, в долях — признак головки рельса.
+
+    Знак здесь обратен тому, которого ждёшь. Предполагалось, что полированный
+    металл рельса ЯРЧЕ матового бетона; замер показал ровно наоборот: на 25 821
+    точке головки рельса против 466 318 точек пола между рельсами вероятность
+    того, что точка рельса ярче точки пола, равна 0.19, то есть рельс СИСТЕМАТИЧЕСКИ
+    темнее, и заметно.
+
+    Объяснение физическое: лидар смотрит вдоль пути, и на головку рельса луч
+    падает под скользящим углом. Полированная поверхность при таком падении
+    работает зеркалом — отражает энергию вперёд, а не обратно в приёмник.
+    Матовый бетон рассеивает диффузно и возвращает больше. Чем ровнее металл,
+    тем он на таком ракурсе ТЕМНЕЕ.
+
+    0 — не темнее окружения, 1 — полностью чёрный на его фоне.
+    """
+    base = float(np.median(pi))
+    if not np.isfinite(base) or base <= 0:
+        return 0.0
+    return float(np.clip(1.0 - i_peak / base, 0.0, 1.0))
 
 
 def find_rails_by_gauge(points, depth_lo, depth_hi, x_range=4.0, xbin=0.05,
-                        expected=EXPECTED_GAUGE, tol=GAUGE_TOL, min_rise=0.03):
+                        expected=EXPECTED_GAUGE, tol=GAUGE_TOL, min_rise=0.03,
+                        dark_weight=DARK_WEIGHT):
     """Ищет рельсы как ПАРУ ПИКОВ профиля пола на правильном расстоянии друг от
     друга, не требуя выемки между ними.
 
@@ -163,7 +199,7 @@ def find_rails_by_gauge(points, depth_lo, depth_hi, x_range=4.0, xbin=0.05,
     prof = _floor_profile_xz(points, depth_lo, depth_hi, x_range, xbin)
     if prof is None:
         return None
-    px, pz, xb, zb = prof
+    px, pz, xb, zb, pi = prof
 
     peaks, props = find_peaks(pz, prominence=min_rise)
     if len(peaks) < 2:
@@ -180,7 +216,15 @@ def find_rails_by_gauge(points, depth_lo, depth_hi, x_range=4.0, xbin=0.05,
             # ожидаемой колее. Только по выраженности выбирать нельзя: пара
             # "крайний рельс + выступ у стены" иногда даёт пики не хуже, но
             # расстояние между ними заметно меньше колеи, и это её выдаёт.
+            #
+            # Третье свидетельство — яркость: обе вершины должны быть ТЕМНЕЕ
+            # окружающего пола (см. _rail_darkness — знак измерен, а не
+            # угадан). Оно независимо от первых двух и помогает там, где
+            # профиль пологий и по выраженности пики неразличимы.
             score = min(cand[a][2], cand[b][2]) - 0.5 * abs(sep - expected)
+            if dark_weight:
+                score += dark_weight * min(_rail_darkness(pi, pi[cand[a][0]]),
+                                           _rail_darkness(pi, pi[cand[b][0]]))
             if best is None or score > best[0]:
                 best = (score, cand[a][1], cand[b][1])
     if best is None:

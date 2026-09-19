@@ -60,6 +60,7 @@ import numpy as np
 
 from .curvature import eval_fit, ransac_poly_fit, slope_from_fit
 from .detector import DEFAULT_DEPTH_BINS, analyze_frame
+from .rangeimage import surface_mask
 
 # Более частые срезы, чем DEFAULT_DEPTH_BINS: стена — сплошная поверхность, по
 # ней точек хватает и на узких срезах, а частая сетка даёт гладкую кривую и
@@ -76,6 +77,12 @@ WALL_DEPTH_BINS = (
 # открытое пространство. Но ответить "докуда геометрию вообще видно" без них
 # нельзя, поэтому они считаются отдельно и только как диагностика.
 REACH_DEPTH_BINS = [(42, 48), (48, 55), (55, 63), (63, 72), (72, 85), (85, 100)]
+
+# Те же срезы, продлённые до 62 м. §17 такое продление отверг: дальние срезы были
+# слишком разрежены и на станциях описывали уже не стену, а открытое пространство.
+# С накоплением кадров (§20) причина отпала — плотность на 50–60 м выросла вчетверо,
+# — поэтому вариант заведён заново и меряется отдельно.
+WALL_DEPTH_BINS_DEEP = WALL_DEPTH_BINS + [(42, 48), (48, 55), (55, 62)]
 
 V_LO, V_HI = 0.2, 1.1      # полоса высот над головкой рельса (см. docstring)
 U_MIN, U_MAX = 1.0, 6.5    # коридор поиска стены вбок от оси пути, м
@@ -104,6 +111,14 @@ def rail_samples(points, depth_bins=DEFAULT_DEPTH_BINS):
     это не ошибка, дальше геометрия строится и без них.
     """
     rail_records, _ = analyze_frame(points, depth_bins)
+    return rail_axis_samples(rail_records)
+
+
+def rail_axis_samples(rail_records):
+    """Та же выжимка, но из УЖЕ найденных срезов — без повторного прогона
+    детектора. Нужна, когда опора кадра посчитана раньше и переиспользуется:
+    детектор рельсов стоит 35 мс из 61 мс всей подгонки, и второй раз его
+    гонять незачем."""
     empty = (np.zeros(0), np.zeros(0), rail_records, None)
     if not rail_records:
         return empty
@@ -675,7 +690,7 @@ RAIL_ROLES = frozenset({"floor", "axis", "rows"})
 
 def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI,
                         use_rails=True, rail_roles=RAIL_ROLES, prior=None,
-                        near_gate=None):
+                        near_gate=None, surface_tol=None, frame=None):
     """Полный проход: опора -> координаты пути -> общая форма тоннеля.
 
     use_rails=False принудительно отключает рельсы целиком — это режим
@@ -683,6 +698,10 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
     путь с рельсовым как с эталоном. Иначе безрельсовую ветку негде проверить:
     в разработочных прогонах рельсы находятся почти всегда, а прогон, где они
     пропадают целыми кусками, отложен как валидационный.
+
+    frame=... подставляет готовую опору вместо поиска рельсов и пола. Нужно при
+    накоплении кадров: облако там слито из нескольких, а опора обязана остаться
+    от текущего, и заодно детектор рельсов не гоняется дважды.
 
     Возвращает dict:
         frame  — прямая опора (положение и курс, профиль пола, колея)
@@ -695,41 +714,56 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
     y = points['y'].astype(float)
     z = points['z'].astype(float)
 
-    # Отсечение по стенам ПРОШЛОГО кадра. Между кадрами поезд проезжает единицы
-    # метров, так что стены, найденные на прошлом кадре, — надёжная оценка того,
-    # где кончается тоннель сейчас. Всё, что снаружи них, тоннелю не принадлежит:
-    # это соседний путь, настил платформы или ниша. Детектору рельсов это важнее
-    # всего — он ищет самый глубокий провал профиля в пределах |x| < 4 м, и щель
-    # между крайним рельсом и стеной принимал за путь.
-    #
-    # Запас PREV_WALL_MARGIN оставляет тоннелю право расшириться: за кадр он
-    # может стать шире на этот запас, за несколько кадров — на сколько угодно.
-    inside = _inside_prev_walls(x, y, prior)
-    if inside is not None and inside.sum() < 0.2 * len(x):
-        inside = None  # отсечение выбросило почти всё — значит опора устарела
-    fit_points = points if inside is None else points[inside]
-
     roles = frozenset(rail_roles) if use_rails else frozenset()
-    if roles:
-        rd, rxc, rail_records, gauge = rail_samples(fit_points)
+    if frame is not None:
+        # Опора передана готовой — это накопление кадров: облако там слито из
+        # нескольких, но рельсы и пол берутся от ТЕКУЩЕГО кадра, где они уже
+        # найдены. Повторный прогон детектора дал бы то же самое за те же 35 мс.
+        rd, rxc, rail_records, gauge = rail_axis_samples(frame["rail_records"])
+        floor_coeffs = frame["floor_coeffs"]
     else:
-        rd, rxc, rail_records, gauge = np.zeros(0), np.zeros(0), [], None
+        # Отсечение по стенам ПРОШЛОГО кадра. Между кадрами поезд проезжает
+        # единицы метров, так что стены, найденные на прошлом кадре, — надёжная
+        # оценка того, где кончается тоннель сейчас. Всё, что снаружи них,
+        # тоннелю не принадлежит: это соседний путь, настил платформы или ниша.
+        # Детектору рельсов это важнее всего — он ищет самый глубокий провал
+        # профиля в пределах |x| < 4 м, и щель между крайним рельсом и стеной
+        # принимал за путь.
+        #
+        # Запас PREV_WALL_MARGIN оставляет тоннелю право расшириться: за кадр он
+        # может стать шире на этот запас, за несколько кадров — на сколько угодно.
+        inside = _inside_prev_walls(x, y, prior)
+        if inside is not None and inside.sum() < 0.2 * len(x):
+            inside = None  # отсечение выбросило почти всё — значит опора устарела
+        fit_points = points if inside is None else points[inside]
 
-    floor_coeffs = floor_profile(fit_points, rail_records if "floor" in roles else [])
-    if floor_coeffs is None:
-        return None
+        if roles:
+            rd, rxc, rail_records, gauge = rail_samples(fit_points)
+        else:
+            rd, rxc, rail_records, gauge = np.zeros(0), np.zeros(0), [], None
 
-    if "axis" in roles and len(rd) >= 3:
-        near = rd <= NEAR_DEPTH
-        dn, xn = (rd[near], rxc[near]) if near.sum() >= 3 else (rd, rxc)
-        fit = ransac_poly_fit(dn, xn, 1, 0.15)
-        base = fit["coeffs"] if fit is not None else np.array([0.0, float(np.median(xn))])
-    else:
-        base = _bootstrap_heading(x, y, z, floor_coeffs, depth_bins, v_lo, v_hi)
+        floor_coeffs = floor_profile(fit_points, rail_records if "floor" in roles else [])
+        if floor_coeffs is None:
+            return None
 
-    frame = _straight_frame(base, floor_coeffs, gauge, rail_records)
+        if "axis" in roles and len(rd) >= 3:
+            near = rd <= NEAR_DEPTH
+            dn, xn = (rd[near], rxc[near]) if near.sum() >= 3 else (rd, rxc)
+            fit = ransac_poly_fit(dn, xn, 1, 0.15)
+            base = fit["coeffs"] if fit is not None else np.array([0.0, float(np.median(xn))])
+        else:
+            base = _bootstrap_heading(x, y, z, floor_coeffs, depth_bins, v_lo, v_hi)
+        frame = _straight_frame(base, floor_coeffs, gauge, rail_records)
+    base = frame["axis_fit"]["coeffs"]
     d, u, v = to_track_coords(x, y, z, frame)
-    band = (v >= v_lo) & (v <= v_hi) & (d > 2) & (d < 45)
+    # Полоса доходит до конца ЗОНДИРУЮЩИХ срезов, а не до 45 м, как было.
+    # Прежний предел ровно совпадал с серединой первого зондирующего среза
+    # (42-48 м), поэтому замер «докуда видно» упирался в 45 м механически, на
+    # всех прогонах и при любых данных — и §17 принял этот упор за свойство
+    # тоннеля. На подгонку это не влияет: срезы подгонки кончаются на 42 м
+    # независимо от полосы.
+    d_probe = max(REACH_DEPTH_BINS[-1][1], depth_bins[-1][1])
+    band = (v >= v_lo) & (v <= v_hi) & (d > 2) & (d < d_probe)
     # Метрики считаются по ПОЛНОМУ облаку, а подгонка — по отсечённому. Иначе
     # отсечение само себя и аттестует: выброшенные точки перестают попадать в
     # "утечку за стену", и leak обнуляется независимо от того, верна стена или нет.
@@ -742,6 +776,21 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
     # где прошлая граница заведомо надёжна.
     db_all, ub_all = d[band], u[band]
     db, ub = db_all, ub_all
+
+    # Отбор по непрерывности (эксперимент 2): в оценку границы идут только точки,
+    # лежащие на сплошной поверхности. Метрики при этом по-прежнему считаются по
+    # ПОЛНОМУ облаку (db_all/ub_all) — иначе фильтр аттестует сам себя, ровно как
+    # это было с отсечением по стенам прошлого кадра (§18).
+    if surface_tol:
+        # Отрицательный порог — мягкий вариант: точки без соседа (край тени, край
+        # сектора обзора — их больше половины) остаются, и фильтр судит только о
+        # том, что реально измерено.
+        surf = surface_mask(points, step_tol=abs(float(surface_tol)),
+                            keep_isolated=surface_tol < 0)
+        if surf is not None:
+            sb = surf[band]
+            if sb.sum() >= 0.1 * max(band.sum(), 1):
+                db, ub = db_all[sb], ub_all[sb]
 
     # Ворота ставятся ровно там, где распознан желоб: глубже путь известен уже
     # только экстраполяцией, и обрезать по нему кандидатов было бы самонадеянно.
@@ -771,7 +820,10 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
             sides[name] = None
             continue
         predict = (lambda dd, _n=name: side_offset(shape, _n, dd))
-        m = wall_metrics(db_all, ub_all, sign, predict, depth_bins)
+        # Метрика считается ВСЕГДА по одним и тем же срезам, а не по тем, на
+        # которых шла подгонка: иначе вариант с продлённой глубиной менялся бы
+        # сам и вместе со своей меркой, и сравнивать его было бы не с чем.
+        m = wall_metrics(db_all, ub_all, sign, predict, WALL_DEPTH_BINS)
         reach = _probe_reach(db_all, ub_all, sign, predict, REACH_DEPTH_BINS)
         dd, oo, inl = seeded[name]
         sides[name] = {

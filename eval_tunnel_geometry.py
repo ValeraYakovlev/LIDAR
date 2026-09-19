@@ -32,6 +32,7 @@ import numpy as np
 from rail_detection import (
     DEFAULT_DEPTH_BINS,
     WALL_DEPTH_BINS,
+    WALL_DEPTH_BINS_DEEP,
     analyze_walls,
     bag_path,
     combined_wall_fit,
@@ -44,7 +45,8 @@ from rail_detection import (
 )
 from rail_detection.tracker import TunnelTracker
 from rail_detection.tunnel_frame import (RAIL_FIT_DEPTH, V_HI, V_LO,
-                                         _axis_offset_coeffs, wall_metrics)
+                                         _axis_offset_coeffs, tracked_depth,
+                                         wall_metrics)
 
 MIN_COVERAGE = 0.70
 MAX_LEAK = 0.15
@@ -166,26 +168,31 @@ def iter_test_frames(dataset, test_set):
 
 
 def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
-             use_rails=True, rail_roles=None, track=False):
+             use_rails=True, rail_roles=None, track=False, surface_tol=None,
+             accumulate=None, deep=False):
     with open(test_set_path) as f:
         test_set = json.load(f)["test_set"]
+    bins = WALL_DEPTH_BINS_DEEP if deep else WALL_DEPTH_BINS
 
     stats = {k: {"both": 0, "any": 0} for k in ("new", "combined", "density")}
+    per_bag = defaultdict(lambda: {"n": 0, "both": 0})
     n_frames, n_no_frame = 0, 0
     fails = []
     axis_errors = []
+    reaches = []
 
-    tracker = TunnelTracker() if track else None
+    tracker = TunnelTracker(**(accumulate or {})) if track else None
     for bag, idx, points, first, step in iter_test_frames(dataset, test_set):
         n_frames += 1
-        kw = dict(use_rails=use_rails,
+        per_bag[bag]["n"] += 1
+        kw = dict(use_rails=use_rails, surface_tol=surface_tol,
                   **({} if rail_roles is None else {'rail_roles': rail_roles}))
         if tracker is not None:
             if first:
                 tracker.reset()
-            res = tracker.update(points, steps=step, depth_bins=WALL_DEPTH_BINS, **kw)
+            res = tracker.update(points, steps=step, depth_bins=bins, **kw)
         else:
-            res = fit_tunnel_geometry(points, WALL_DEPTH_BINS, **kw)
+            res = fit_tunnel_geometry(points, bins, **kw)
         if res is None:
             n_no_frame += 1
             fails.append((bag, idx, "не удалось построить опору"))
@@ -201,6 +208,13 @@ def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
             l_ok, r_ok = side_ok(m.get("left")), side_ok(m.get("right"))
             stats[k]["both"] += int(l_ok and r_ok)
             stats[k]["any"] += int(l_ok or r_ok)
+            if k == "new":
+                per_bag[bag]["both"] += int(l_ok and r_ok)
+
+        seen = [tracked_depth(res, s) for s in ("left", "right")]
+        seen = [s for s in seen if s]
+        if seen:
+            reaches.append(float(np.mean(seen)))
 
         if not (side_ok(m_new.get("left")) and side_ok(m_new.get("right"))):
             def d(s):
@@ -228,6 +242,14 @@ def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
             print(f"  ось на отложенных рельсах (>{RAIL_FIT_DEPTH:.0f} м): медиана "
                   f"{np.median(a):.3f} м, 90-й перцентиль {np.percentile(a, 90):.3f} м "
                   f"({len(a)} кадров)")
+        if reaches:
+            rr = np.array(reaches)
+            print(f"  дальность наблюдения границы: медиана {np.median(rr):.1f} м, "
+                  f"90-й перцентиль {np.percentile(rr, 90):.1f} м")
+        if len(per_bag) > 1:
+            print("  по прогонам:")
+            for b, s in sorted(per_bag.items()):
+                print(f"    {b:38s} {s['both']:3d}/{s['n']:3d} = {100*s['both']/s['n']:5.1f}%")
         if n_no_frame:
             print(f"  (в {n_no_frame} кадрах не построилась опора)")
         print("\nКадры, где новый метод не дал обе стены:")
@@ -235,7 +257,8 @@ def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
             print(f"  {b} #{i}: {r}")
         if len(fails) > 25:
             print(f"  ... ещё {len(fails) - 25}")
-    return stats, n_frames, fails
+    return {"stats": stats, "n_frames": n_frames, "fails": fails, "per_bag": dict(per_bag),
+            "axis": axis_errors, "reach": reaches}
 
 
 if __name__ == "__main__":
@@ -249,6 +272,16 @@ if __name__ == "__main__":
                    help="аблация: какие роли играют рельсы (floor axis rows)")
     p.add_argument("--no-rails", action="store_true",
                    help="стресс-проверка: отключить рельсы и мерить безрельсовый путь")
+    p.add_argument("--surface-tol", type=float, default=None,
+                   help="эксп.2: брать в оценку границы только точки сплошной "
+                        "поверхности (порог деприцированного скачка, м)")
+    p.add_argument("--accumulate", type=int, default=None,
+                   help="сколько кадров складывать со сдвигом на Δs "
+                        "(по умолчанию как в rail_detection.tracker; 1 — без накопления)")
+    p.add_argument("--deep", action="store_true",
+                   help="эксп.3: продлить срезы подгонки с 42 до 62 м")
     a = p.parse_args()
     evaluate(a.dataset, a.test_set, compare=a.compare, use_rails=not a.no_rails,
-             rail_roles=a.rail_roles, track=a.track)
+             rail_roles=a.rail_roles, track=a.track, surface_tol=a.surface_tol,
+             accumulate=({"accumulate": a.accumulate} if a.accumulate else None),
+             deep=a.deep)

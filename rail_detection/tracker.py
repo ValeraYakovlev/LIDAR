@@ -42,6 +42,7 @@ from collections import deque
 
 import numpy as np
 
+from .accumulate import N_FRAMES, FrameAccumulator
 from .tunnel_frame import DEPTH_SCALE, MIN_RADIUS, fit_tunnel_geometry, tracked_depth, wall_x
 
 HISTORY = 5         # кадров в окне сглаживания кривизны
@@ -54,11 +55,19 @@ class TunnelTracker:
 
     Состояние сбрасывается методом reset() при переходе к другой записи —
     геометрия соседних записей никак не связана.
+
+    accumulate: сколько кадров складывать в одно облако (см. accumulate.py).
+        0 или 1 — как было, покадрово. Накопление живёт здесь, а не у
+        вызывающего кода, потому что требует двух проходов по кадру — сначала
+        опора по нему одному, потом подгонка по слитому облаку, — и держать эту
+        последовательность в одном месте надёжнее, чем повторять её в каждом
+        скрипте.
     """
 
-    def __init__(self, history=HISTORY, max_gap=MAX_GAP_FRAMES):
+    def __init__(self, history=HISTORY, max_gap=MAX_GAP_FRAMES, accumulate=N_FRAMES):
         self.history = history
         self.max_gap = max_gap
+        self.accumulate = int(accumulate or 0)
         self.reset()
 
     def reset(self):
@@ -67,6 +76,10 @@ class TunnelTracker:
                            "right": deque(maxlen=self.history)}
         self.bounds = None
         self.gap = 0
+        self.accumulator = (FrameAccumulator(n_frames=self.accumulate)
+                            if self.accumulate > 1 else None)
+        self.merged = None      # слитое облако последнего кадра (для отрисовки)
+        self.n_native = 0       # сколько точек в нём от самого кадра
 
     @property
     def state(self):
@@ -80,11 +93,25 @@ class TunnelTracker:
 
     def update(self, points, steps=1, **kwargs):
         """Обрабатывает очередной кадр записи. Возвращает тот же dict, что и
-        fit_tunnel_geometry, но с кривизной, сглаженной по окну.
+        fit_tunnel_geometry, но с кривизной, сглаженной по окну, и (при
+        включённом накоплении) с подгонкой по нескольким кадрам сразу.
 
         steps — сколько кадров записи прошло с прошлого вызова; используется
-        только чтобы понять, не оборвалась ли последовательность.
+        чтобы понять, не оборвалась ли последовательность, и насколько широко
+        искать продольное смещение.
         """
+        self.merged, self.n_native = points, len(points)
+        if self.accumulator is not None:
+            # Опора считается по ОДНОМУ кадру: координаты пути, в которых
+            # складываются кадры, должны принадлежать текущему, а рельсы и пол
+            # накопление не трогает вовсе. Она же передаётся во вторую подгонку
+            # готовой — детектор рельсов стоит больше половины её времени.
+            solo = fit_tunnel_geometry(points, prior=self.state, **kwargs)
+            if solo is not None:
+                self.merged = self.accumulator.push(points, solo["frame"], steps=steps)
+                kwargs = {**kwargs, "frame": solo["frame"]}
+        points = self.merged
+
         res = fit_tunnel_geometry(points, prior=self.state, **kwargs)
         if res is None:
             self.gap += steps
