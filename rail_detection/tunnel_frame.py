@@ -415,7 +415,8 @@ def side_offset(shape, side, depths):
 
 def _segment_width(depths, resid, max_breaks=None, min_seg=3,
                    min_step=MIN_WIDTH_STEP, gain=WIDTH_GAIN,
-                   floor=MIN_HALF_WIDTH, prior_edges=None, sticky=WIDTH_STICKY):
+                   floor=MIN_HALF_WIDTH, prior_edges=None, sticky=WIDTH_STICKY,
+                   near_only=0.0):
     """Кусочно-постоянная полуширина вдоль кадра.
 
     Тоннель не обязан быть одной ширины на весь кадр: у станции граница — торец
@@ -451,6 +452,11 @@ def _segment_width(depths, resid, max_breaks=None, min_seg=3,
     order = np.argsort(d)
     d, r = d[order], r[order]
     n = len(d)
+    # near_only: разрывы разрешены только в пределах этой глубины. Смысл —
+    # ширина определяется ближней зоной, где точек избыток, а дальние срезы
+    # пусть говорят только о форме. Дальше границы тоннель считается таким же
+    # широким, каким его видно вблизи.
+    n_cut = n if not near_only else int(np.searchsorted(d, near_only))
 
     def evaluate(cuts, check_step=True):
         bounds = [0] + list(cuts) + [n]
@@ -474,7 +480,7 @@ def _segment_width(depths, resid, max_breaks=None, min_seg=3,
     best_err, best_vals, best_cuts = flat[0], flat[1], ()
     for k in range(1, max_breaks + 1):
         cand = None
-        for cuts in combinations(range(min_seg, n - min_seg + 1), k):
+        for cuts in combinations(range(min_seg, min(n_cut, n - min_seg) + 1), k):
             if any(cuts[i + 1] - cuts[i] < min_seg for i in range(len(cuts) - 1)):
                 continue
             got = evaluate(cuts)
@@ -501,7 +507,7 @@ def _segment_width(depths, resid, max_breaks=None, min_seg=3,
 
 
 def _fit_parallel_walls(data, rails, window=0.55, prior=None, beta_prior=BETA_PRIOR,
-                        sticky=WIDTH_STICKY, floor=MIN_HALF_WIDTH):
+                        sticky=WIDTH_STICKY, floor=MIN_HALF_WIDTH, near_only=0.0):
     """Шаг 3: согласованная по всему кадру форма тоннеля.
 
     Опора — ближняя зона: там точек на порядок больше и оценка среза устойчива,
@@ -553,7 +559,8 @@ def _fit_parallel_walls(data, rails, window=0.55, prior=None, beta_prior=BETA_PR
         # разъезжаются на один заход.
         shape["edges"] = edges
         new_segs, new_edges, new_seeded, changed = _resegment(
-            seeded, shape, window, prior_edges=prior_edges, sticky=sticky, floor=floor)
+            seeded, shape, window, prior_edges=prior_edges, sticky=sticky, floor=floor,
+            near_only=near_only)
         if not changed:
             break
         segs, edges, seeded = new_segs, new_edges, new_seeded
@@ -628,7 +635,7 @@ def _converge(seeded, rail_state, segs, window, beta_prior=BETA_PRIOR):
 
 
 def _resegment(seeded, shape, window, prior_edges=None, sticky=WIDTH_STICKY,
-               floor=MIN_HALF_WIDTH):
+               floor=MIN_HALF_WIDTH, near_only=0.0):
     """Ищет разрывы ширины по остаткам "срез минус форма" на каждой стороне.
 
     Смотрит на ВСЕ срезы, а не только на инлайеры текущей модели. Иначе разрыв
@@ -648,6 +655,7 @@ def _resegment(seeded, shape, window, prior_edges=None, sticky=WIDTH_STICKY,
         sgn = -1.0 if name == "left" else +1.0
         resid = o - sgn * np.polyval(_axis_offset_coeffs(shape), d)
         e, vals = _segment_width(d, resid, sticky=sticky, floor=floor,
+                                 near_only=near_only,
                                  prior_edges=(prior_edges or {}).get(name))
         if len(e) == 0:
             continue
@@ -769,7 +777,8 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
                         use_rails=True, rail_roles=RAIL_ROLES, prior=None,
                         near_gate=None, surface_tol=None, frame=None,
                         beta_prior=BETA_PRIOR, sticky=WIDTH_STICKY,
-                        min_half_width=MIN_HALF_WIDTH, sides=None):
+                        min_half_width=MIN_HALF_WIDTH, sides=None,
+                        width_near_only=0.0):
     """Полный проход: опора -> координаты пути -> общая форма тоннеля.
 
     use_rails=False принудительно отключает рельсы целиком — это режим
@@ -898,7 +907,8 @@ def fit_tunnel_geometry(points, depth_bins=WALL_DEPTH_BINS, v_lo=V_LO, v_hi=V_HI
         rd_fit, ru_fit = np.zeros(0), np.zeros(0)
     shape, seeded, rail_state = _fit_parallel_walls(data, (rd_fit, ru_fit), prior=prior,
                                                    beta_prior=beta_prior, sticky=sticky,
-                                                   floor=min_half_width)
+                                                   floor=min_half_width,
+                                                   near_only=width_near_only)
     if shape is None:
         return None
 
