@@ -328,18 +328,32 @@ class DynamicClearancePipeline:
         if len(obstacle_points) > 0:
             obs_u = u_aligned[mask_bg_sub]
             obs_v = v_aligned[mask_bg_sub]
+            abs_u = np.abs(obs_u)
             
-            d_left = obs_u - u_min_base
-            d_right = u_max_base - obs_u
-            d_top = v_max_base - obs_v
+            # Размеры зон (половина ширины и полная высота от рельса)
+            # Внешняя невидимая зона (Green): до 2.7m ширина, до 3.5m высота
+            # Промежуточная зона (Yellow): до 2.4m ширина, до 3.25m высота
+            # Зона физического центра/поезда (Red): до 2.1m ширина, до 3.0m высота
             
-            danger = np.minimum.reduce([d_left / 0.5, d_right / 0.5, d_top / 0.5])
-            danger = np.clip(danger, 0.0, 1.0)
+            core_u_max = 2.1 / 2.0
+            core_v_max = rail_top_v + 0.10 + 3.0
             
-            R_col = np.clip(2.0 * danger, 0.0, 1.0)
-            G_col = np.clip(2.0 * (1.0 - danger), 0.0, 1.0)
-            B_col = np.zeros_like(danger)
-            obstacle_colors = np.vstack([R_col, G_col, B_col]).T
+            mid_u_max = 2.4 / 2.0
+            mid_v_max = rail_top_v + 0.10 + 3.25
+            
+            # По умолчанию все точки зеленые (попали в невидимую внешнюю зону)
+            colors = np.zeros((len(abs_u), 3))
+            colors[:, 1] = 1.0 # (0, 1, 0)
+            
+            # Точки, которые уже глубоко в границах (желтые)
+            mask_yellow = (abs_u <= mid_u_max) & (obs_v <= mid_v_max)
+            colors[mask_yellow] = [1.0, 1.0, 0.0]
+            
+            # Точки прямо в центре / внутри корпуса поезда (красные)
+            mask_red = (abs_u <= core_u_max) & (obs_v <= core_v_max)
+            colors[mask_red] = [1.0, 0.0, 0.0]
+            
+            obstacle_colors = colors
         
         min_distance = np.min(obstacle_d) if len(obstacle_d) > 0 else np.inf
         

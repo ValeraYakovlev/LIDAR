@@ -28,13 +28,12 @@ def export_gif(dataset_name):
     if not db3_files:
         print(f"Ошибка: Не найдены файлы .db3 в директории {dataset_dir}")
         return
-    db3_path = db3_files[0]
-
+    
     out_dir = Path(r"D:\LIDAR\output")
     out_dir.mkdir(exist_ok=True)
     output_filename = out_dir / f"{dataset_name}_clearance.gif"
     
-    print(f"Читаем файл: {db3_path}")
+    print(f"Читаем ROS bag директорию: {dataset_dir}")
     
     # 2. Инициализация пайплайна
     pipeline = DynamicClearancePipeline()
@@ -52,7 +51,9 @@ def export_gif(dataset_name):
     is_first_frame = True
     frames = []
     
-    reader = AnyReader([db3_path], default_typestore=typestore)
+    # Открываем директорию целиком, чтобы прочитать все .db3 куски
+    reader = AnyReader(db3_files, default_typestore=typestore)
+    frame_idx = 0
     with reader:
         messages_iter = reader.messages() if hasattr(reader, 'messages') else []
         for i, (conn, ts, rawdata) in enumerate(messages_iter):
@@ -71,6 +72,7 @@ def export_gif(dataset_name):
             if payload["status"] != "success":
                 continue
                 
+            frame_idx += 1
             frame_geom = payload["frame_geometry"]
             box_params = payload["clearance_boxes"]
             
@@ -119,7 +121,7 @@ def export_gif(dataset_name):
                 # Вектор UP: чтобы вперед (-y) было направлено вверх на экране
                 view_ctrl.set_up([0.0, -1.0, 0.0])
                 # Смещаем центр обзора ближе к началу (чтобы начало координат было внизу экрана)
-                view_ctrl.set_lookat([0.0, -30.0, 0.0])
+                view_ctrl.set_lookat([0.0, -45.0, 0.0])
                 # Зум значительно приближен, чтобы не "висеть высоко в воздухе"
                 view_ctrl.set_zoom(0.22)
                 
@@ -138,7 +140,7 @@ def export_gif(dataset_name):
             img_uint8 = np.array(img_float * 255.0, copy=True).astype(np.uint8)
             frames.append(Image.fromarray(img_uint8))
             
-            print(f"Кадр {i:03d} добавлен в GIF...", end='\r')
+            print(f"Кадр {frame_idx:03d} добавлен в GIF...", end='\r')
             
     vis.destroy_window()
     print(f"\nСохранение GIF файла '{output_filename}' ({len(frames)} кадров)...")

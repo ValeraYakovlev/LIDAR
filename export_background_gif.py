@@ -131,22 +131,22 @@ def export_gif(bag_folder="doubleT_obstacle"):
     if not db3_files:
         print(f"Нет файлов .db3 в {bag_dir}")
         return
-    db3_path = db3_files[0]
     
     out_dir = Path(r"D:\LIDAR\output")
     out_dir.mkdir(exist_ok=True)
     output_filename = out_dir / f"{bag_folder}_background.gif"
     
-    print(f"Читаем файл: {db3_path}")
+    print(f"Читаем ROS bag директорию: {bag_dir}")
     typestore = get_typestore(Stores.LATEST)
     
     frames = []
     
-    reader = AnyReader([db3_path], default_typestore=typestore)
+    fig, axes = plt.subplots(1, 3, figsize=(15, 10), facecolor='black')
+    fig.subplots_adjust(left=0.02, right=0.98, bottom=0.02, top=0.90, wspace=0.1)
     
-    fig, ax = plt.subplots(figsize=(6, 10), facecolor='black')
-    fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-    
+    frame_idx = 0
+    # Открываем напрямую .db3 файлы, чтобы избежать ошибок с metadata.yaml
+    reader = AnyReader(db3_files, default_typestore=typestore)
     with reader:
         for i, (conn, ts, rawdata) in enumerate(reader.messages()):
             if conn.msgtype != 'sensor_msgs/msg/PointCloud2':
@@ -163,50 +163,48 @@ def export_gif(bag_folder="doubleT_obstacle"):
             if pcd_a is None or pcd_i is None:
                 continue
                 
+            frame_idx += 1
             pts_a = np.asarray(pcd_a.points)
             colors_a = np.asarray(pcd_a.colors)
             pts_i = np.asarray(pcd_i.points)
             
-            ax.clear()
-            ax.set_facecolor('black')
+            for ax in axes:
+                ax.clear()
+                ax.set_facecolor('black')
+                ax.set_xlim(-5, 5)
+                # Переворачиваем ось Y: 2 внизу, -40 вверху (начало координат внизу экрана)
+                ax.set_ylim(2, -40)
+                ax.set_aspect('equal')
+                ax.axis('off')
             
-            # Subsample for faster rendering (e.g. take every 10th point)
+            # Subsample for faster rendering
             decimate = 10
             
             # Разделяем серые (норма) и красные (аномалии)
             is_red = colors_a[:, 0] > 0.8
             is_gray = ~is_red
             
-            # Отрисовка: 
-            # 1. Зеленый идеальный тоннель (фон)
-            ax.scatter(pts_i[::decimate, 0], pts_i[::decimate, 1], c='lime', s=0.5, alpha=0.3, label="Ideal Tunnel")
+            # Panel 1: Ideal Tunnel
+            axes[0].scatter(pts_i[::decimate, 0], pts_i[::decimate, 1], c='lime', s=0.5, alpha=0.3)
+            axes[0].set_title("Ideal Reference (ICP)", color='lime', fontsize=14, pad=10)
             
-            # 2. Серые точки (совпавший тоннель)
-            ax.scatter(pts_a[is_gray][::decimate, 0], pts_a[is_gray][::decimate, 1], c='gray', s=0.5, alpha=0.5, label="Matched")
+            # Panel 2: Matched Walls
+            axes[1].scatter(pts_a[is_gray][::decimate, 0], pts_a[is_gray][::decimate, 1], c='gray', s=0.5, alpha=0.5)
+            axes[1].set_title("Matched Walls", color='gray', fontsize=14, pad=10)
             
-            # 3. Красные точки (аномалии/препятствия) - рисуем поверх всех
-            ax.scatter(pts_a[is_red][::decimate, 0], pts_a[is_red][::decimate, 1], c='red', s=3.0, alpha=1.0, label="Anomalies")
+            # Panel 3: Anomalies / Obstacles
+            axes[2].scatter(pts_a[is_red][::decimate, 0], pts_a[is_red][::decimate, 1], c='red', s=3.0, alpha=1.0)
+            axes[2].set_title("Obstacles (>15cm)", color='red', fontsize=14, pad=10)
             
-            # Настраиваем вид сверху (x и y координаты)
-            ax.set_xlim(-5, 5)
-            ax.set_ylim(-40, 2)
-            ax.set_aspect('equal')
-            ax.axis('off') # Убираем оси для красоты
-            
-            # Добавляем текст
-            ax.text(0.05, 0.95, f"Frame: {i:03d}", transform=ax.transAxes, color='white', fontsize=12, verticalalignment='top')
-            ax.text(0.05, 0.91, "Lime: Ideal Reference (ICP)\nGray: Matched Walls\nRed: Obstacles (>15cm)", transform=ax.transAxes, color='white', fontsize=10, verticalalignment='top')
+            # Добавляем номер кадра как общий заголовок над всеми графиками
+            fig.suptitle(f"Frame: {frame_idx:03d}", color='white', fontsize=16, y=0.98)
             
             fig.canvas.draw()
             # COPY THE ARRAY so it's not a view of a mutable buffer that gets overwritten!
             img = np.array(fig.canvas.buffer_rgba(), copy=True)
             frames.append(Image.fromarray(img))
             
-            print(f"Кадр {i:03d} добавлен в GIF...", end='\r')
-            
-            # Берем первые 200 кадров, чтобы GIF не был гигантским
-            if len(frames) >= 200:
-                break
+            print(f"Кадр {frame_idx:03d} добавлен в GIF...", end='\r')
                 
     print(f"\nСохранение GIF файла '{output_filename}' ({len(frames)} кадров)...")
     

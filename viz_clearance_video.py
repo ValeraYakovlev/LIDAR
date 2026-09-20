@@ -111,9 +111,8 @@ def main(bag_folder_name="doubleT_obstacle"):
     if not db3_files:
         print(f"Не найден .db3 файл в {bag_dir}")
         return
-    db3_path = db3_files[0]
         
-    print(f"Используем файл: {db3_path}")
+    print(f"Читаем ROS bag директорию: {bag_dir}")
     
     # Параметры из ТЗ: 3.1м ширина, 3.7м высота, 1м длина. Зазор 0.25м.
     pipeline = DynamicClearancePipeline()
@@ -146,7 +145,8 @@ def main(bag_folder_name="doubleT_obstacle"):
     print("Проигрывание началось. Используйте ползунок в окне Timeline для перемотки.")
     try:
         proc_times = []
-        reader = AnyReader([db3_path], default_typestore=typestore)
+        # Открываем напрямую .db3 файлы
+        reader = AnyReader(db3_files, default_typestore=typestore)
         with reader:
             messages_iter = iter(reader.messages()) if hasattr(reader, 'messages') else iter([])
             
