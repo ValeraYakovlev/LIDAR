@@ -64,6 +64,14 @@ FALLBACK_HEAD = 0.15   # м: головки над плато пола, когд
 # Полоса высот для замера Δs — та же клиренс-полоса, что и в §20.
 BAND_LO, BAND_HI = 0.2, 1.1
 
+# Эксперимент 16: путь как состояние.
+# Окно медианы пути. Пять кадров (как у tracker.HISTORY, §17) гасят дрожание
+# чуть сильнее, но на кривой запаздывают: ошибка по рельсам растёт с 0.013 до
+# 0.021-0.023 м — это ровно тот увод, который набегает за 6 м хода при R = 600 м.
+# Три кадра возвращают точность к базовой (±1-2 мм), сохраняя почти весь выигрыш.
+HISTORY = 3
+REFINE_MAX = 34.0      # м: докуда головки рельсов меряются надёжно (§25)
+
 VOXEL = 0.05
 DBSCAN_EPS = 0.35
 DBSCAN_MIN_SAMPLES = 12
@@ -127,6 +135,42 @@ def build_path(fit, rail_d, rail_x, prev_offset=0.0, near=RAIL_NEAR):
                                            * np.diff(PATH_GRID))])
     return {"d": PATH_GRID, "x": x, "psi": psi, "arc": arc, "mode": mode, "d0": d0,
             "offset": float(x[0] - x_c[0])}
+
+
+def _path_from_x(x, mode, d0=None, x_ref=None):
+    """Собрать путь из массива x(d) на PATH_GRID: курс и длина дуги — по нему."""
+    psi = np.arctan(np.gradient(x, PATH_GRID))
+    arc = np.concatenate([[0.0], np.cumsum(np.sqrt(1 + np.tan(psi[1:]) ** 2)
+                                           * np.diff(PATH_GRID))])
+    return {"d": PATH_GRID, "x": x, "psi": psi, "arc": arc, "mode": mode, "d0": d0,
+            "offset": float(x[0] - (x_ref[0] if x_ref is not None else 0.0))}
+
+
+def advance_path(path, ds):
+    """Тот же путь, но из кадра, снятого на ds метров дальше по нему.
+
+    Вагон сохраняет свою позу ОТНОСИТЕЛЬНО пути: он смещён от оси колеи вбок и
+    развёрнут к ней на угол рыскания, и за кадр это не меняется. Поэтому перенос
+    сдвигает начало координат на ds вдоль текущего курса и доворачивает кадр
+    ровно на то, насколько путь повернул за эти ds, — а не ставит сенсор на сам
+    путь по его касательной.
+
+    Разница не косметическая. Первая версия делала именно это — сажала сенсор на
+    путь, — и стирала поперечное смещение и рыскание. На СТОЯЩЕМ поезде
+    (`doubleT_obstacle`, Δs = 0.00 во всех кадрах) перенос обязан быть
+    тождественным, а давал расхождение 0.19 м на 5 м и 1.74 м на 80 м: замер
+    показывал «дрожание» там, где кадры совпадали.
+    """
+    psi0 = float(path["psi"][0])
+    ox, od = ds * np.sin(psi0), ds * np.cos(psi0)
+    dpsi = float(np.interp(od, path["d"], path["psi"])) - psi0
+    c, sn = np.cos(dpsi), np.sin(dpsi)
+    dx, dd = path["x"] - ox, path["d"] - od
+    xn = dx * c - dd * sn
+    dn = dx * sn + dd * c
+    order = np.argsort(dn)
+    x = np.interp(PATH_GRID, dn[order], xn[order])
+    return _path_from_x(x, path["mode"], None)
 
 
 def path_at(path, depths):
@@ -225,6 +269,73 @@ def cluster(su, uv, vv, min_points=MIN_CLUSTER_POINTS):
     return out
 
 
+def median_path(paths, mode, d0):
+    """Медиана по глубине из нескольких путей, уже перенесённых в текущий кадр.
+
+    Медиана, а не среднее и не ограничитель скорости: §17 на этом уже обжигался —
+    ограничитель не гасит одиночный выброс, а растягивает его в плато, тогда как
+    медиана выбрасывает его целиком и состояние не смещает ни на шаг.
+    """
+    X = np.stack([p["x"] for p in paths])
+    return _path_from_x(np.median(X, axis=0), mode, d0)
+
+
+def refine_by_heads(path, pose, x_c_grid, near=REFINE_MAX, tol=0.08):
+    """Пересборка пути по головкам рельсов, найденным ТАМ, ГДЕ ИМ ПОЛОЖЕНО БЫТЬ.
+
+    `build_path` опирается на сырой детектор рельсов, а он дальше 20-25 м на
+    двухпутном участке хватает чужую пару (§25), поэтому и ограничен 25 метрами.
+    Но когда путь уже построен, головки меряются иначе: у `u = ±колея/2` от него,
+    по самому высокому бину профиля (`roll.rail_pose_track`). Эти замеры надёжны
+    до 34 м, и по ним прямая пути строится на более длинной базе.
+
+    Дальше d0 остаётся искривление контраста — ровно как в build_path.
+    """
+    if len(pose) < 3:
+        return None
+    P = np.array(pose)
+    sel = P[:, 0] <= near
+    if sel.sum() < 3:
+        return None
+    dq = P[sel, 0]
+    # центр колеи в координатах сенсора: путь плюс поперечное смещение по нормали
+    xq, psq, _ = path_at(path, dq)
+    xq = xq + P[sel, 2] / np.cos(psq)
+    line = ransac_poly_fit(dq, xq, 1, tol)
+    if line is None:
+        return None
+    c1, c0 = float(line["coeffs"][0]), float(line["coeffs"][1])
+    d0 = float(dq.max())
+    k = int(np.searchsorted(PATH_GRID, d0))
+    sc = np.gradient(x_c_grid, PATH_GRID)
+    bend = x_c_grid - x_c_grid[k] - sc[k] * (PATH_GRID - PATH_GRID[k])
+    x = c0 + c1 * PATH_GRID + np.where(PATH_GRID > d0, bend, 0.0)
+    return _path_from_x(x, "heads+contrast", d0, x_ref=x_c_grid)
+
+
+def rebase_to_rails(path, anchor, d0):
+    """Взять у пути только ИЗГИБ за d0 и посадить его на свежую опору.
+
+    Нужно для варианта «сглаживать во времени, но не отрываться от рельсов»:
+    ближняя часть пути обязана приходить из ТЕКУЩЕГО кадра (её меряют рельсы под
+    поездом, и ошибаться там нечем), а сглаживать во времени имеет смысл только
+    искривление впереди — оно и дёргается.
+
+    anchor — путь текущего кадра (рельсы + свой изгиб), path — сглаженный.
+    Берётся `path` минус его собственная касательная в d0 и прибавляется к
+    прямой части `anchor`.
+    """
+    if d0 is None:
+        return path
+    k = int(np.searchsorted(PATH_GRID, d0))
+    sp = np.gradient(path["x"], PATH_GRID)
+    bend = path["x"] - path["x"][k] - sp[k] * (PATH_GRID - PATH_GRID[k])
+    sa = np.gradient(anchor["x"], PATH_GRID)
+    line = anchor["x"][k] + sa[k] * (PATH_GRID - PATH_GRID[k])
+    x = np.where(PATH_GRID > d0, line + bend, anchor["x"])
+    return _path_from_x(x, anchor["mode"], d0)
+
+
 class ContrastGauge:
     """Последовательный проход по записи: путь по контрасту, габарит по рельсам.
 
@@ -233,10 +344,19 @@ class ContrastGauge:
     подтверждение находки по приближению.
     """
 
-    def __init__(self, confirm=3):
+    def __init__(self, confirm=3, smooth=True, rail_refine=False, history=HISTORY):
+        """smooth — путь как состояние: False, True (медиана по всему пути) или
+        "bend" (медиана только для изгиба за d0, ближняя часть — с текущих рельсов).
+        rail_refine — пересобрать путь по головкам рельсов до 34 м (refine_by_heads).
+        smooth включён по умолчанию (замер §28), rail_refine выключен — он замер
+        не прошёл. Контрольный прогон «как было» — ContrastGauge(smooth=False)."""
         self.prior = None
         self.offset = 0.0
         self.prev_band = None
+        self.smooth = smooth
+        self.rail_refine = rail_refine
+        self.history = history
+        self.hist = []
         self.watch = ObstacleWatch(confirm=confirm)
 
     def update(self, points, steps=1):
@@ -260,13 +380,57 @@ class ContrastGauge:
             floor = np.array([0.0, float(np.percentile(z, 2))])
 
         rail_d, rail_x, _, gauge = rail_samples(points)
+        gauge = gauge or 1.60
         path = build_path(fit, rail_d, rail_x, self.offset)
         if path["mode"] == "rails+contrast":
             self.offset = path["offset"]
-        s, u, v = to_path_coords(x, y, z, path, floor)
+        x_c_grid = shape_x(fit, PATH_GRID)
 
-        pose = _clean_pose(rail_pose_track(s, u, v, gauge or 1.60, POSE_DEPTHS,
-                                           lambda D: max(1.0, half_thick(D))))
+        def coords(pth):
+            sv, uv, vv = to_path_coords(x, y, z, pth, floor)
+            ps = _clean_pose(rail_pose_track(sv, uv, vv, gauge, POSE_DEPTHS,
+                                             lambda D: max(1.0, half_thick(D))))
+            return sv, uv, vv, ps
+
+        s, u, v, pose = coords(path)
+
+        # Уточнение по головкам рельсов: та же опора, но найденная там, где ей
+        # положено быть, и на базе до 34 м вместо 25 м у сырого детектора.
+        if self.rail_refine:
+            better = refine_by_heads(path, pose, x_c_grid)
+            if better is not None:
+                path = better
+                s, u, v, pose = coords(path)
+
+        # Δs меряется по ТЕКУЩЕМУ пути: продольное смещение к поперечным
+        # поправкам нечувствительно, а медиане пути Δs нужен раньше неё самой.
+        band_sel = (v >= BAND_LO) & (v <= BAND_HI) & (s > 2) & (s < 60)
+        band = {"d": s[band_sel], "u": u[band_sel], "v": v[band_sel]}
+        shift = None
+        if self.prev_band is not None and len(band["d"]) > 500:
+            est = estimate_shift(self.prev_band, band, max_shift=2.2 * max(steps, 1))
+            if est.get("ok"):
+                shift = float(est["shift"])
+        self.prev_band = band if len(band["d"]) > 500 else None
+
+        # Путь как состояние: прошлые измерения переносятся в текущий кадр на
+        # измеренное Δs, и берётся медиана по окну. Без Δs история обнуляется —
+        # переносить её не на что, и складывать кадры «как есть» значило бы
+        # смешивать разные куски тоннеля.
+        if self.smooth:
+            if shift is None:
+                self.hist = []
+            else:
+                self.hist = [advance_path(q, shift) for q in self.hist]
+            self.hist.append(path)
+            self.hist = self.hist[-self.history:]
+            if len(self.hist) >= 3:
+                smoothed = median_path(self.hist, path["mode"], path["d0"])
+                if self.smooth == "bend":
+                    smoothed = rebase_to_rails(smoothed, path, path["d0"])
+                path = smoothed
+                s, u, v, pose = coords(path)
+
         pgrid = np.arange(0.0, D_MAX + 1.0, 1.0)
         theta, uc, vc, has_pose = _pose_curves(pose, pgrid)
 
@@ -284,15 +448,6 @@ class ContrastGauge:
                   & (s > NEAR_LIMIT) & (s <= limit))
         clusters = cluster(s[inside], ug[inside], vg[inside])
 
-        band = {"d": s[(v >= BAND_LO) & (v <= BAND_HI) & (s > 2) & (s < 60)],
-                "u": u[(v >= BAND_LO) & (v <= BAND_HI) & (s > 2) & (s < 60)],
-                "v": v[(v >= BAND_LO) & (v <= BAND_HI) & (s > 2) & (s < 60)]}
-        shift = None
-        if self.prev_band is not None and len(band["d"]) > 500:
-            est = estimate_shift(self.prev_band, band, max_shift=2.2 * max(steps, 1))
-            if est.get("ok"):
-                shift = float(est["shift"])
-        self.prev_band = band if len(band["d"]) > 500 else None
         confirmed = self.watch.update(clusters[0]["dist"] if clusters else None, shift)
 
         return {

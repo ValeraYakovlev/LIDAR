@@ -74,8 +74,8 @@ def _u8(a, lo=0.0, hi=1.0):
     return out
 
 
-def collect(dataset, bag, stride, max_frames=None):
-    cg = ContrastGauge()
+def collect(dataset, bag, stride, max_frames=None, smooth=True):
+    cg = ContrastGauge(smooth=smooth)
     rng = np.random.default_rng(0)
     recs = []
     for idx, points, n_total in iter_frames(bag_path(dataset, bag), stride=stride,
@@ -258,11 +258,11 @@ def render(recs, bag, dpi=85):
     return images
 
 
-def build(dataset, bag, out_dir, stride, target, fps, max_frames):
+def build(dataset, bag, out_dir, stride, target, fps, max_frames, smooth=True):
     if stride is None:
         stride = max(1, round(frame_count(bag_path(dataset, bag)) / target))
     print(f"\n=== {bag} (шаг {stride}) ===")
-    recs = collect(dataset, bag, stride, max_frames)
+    recs = collect(dataset, bag, stride, max_frames, smooth)
     images = render(recs, bag)
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"{bag}.gif"
@@ -286,6 +286,8 @@ def main():
     p.add_argument("--target-frames", type=int, default=130)
     p.add_argument("--max-frames", type=int, default=None)
     p.add_argument("--fps", type=float, default=8.0)
+    p.add_argument("--no-smooth", action="store_true",
+                   help="без сглаживания пути по окну кадров — контрольный прогон")
     a = p.parse_args()
     if a.validate:
         bags = [VALIDATION_RUN]
@@ -294,8 +296,8 @@ def main():
         if VALIDATION_RUN in bags:
             raise SystemExit(f"{VALIDATION_RUN} отложен: только через --validate")
     out_dir = Path(a.out)
-    rows = [build(a.dataset, b, out_dir, a.stride, a.target_frames, a.fps, a.max_frames)
-            for b in bags]
+    rows = [build(a.dataset, b, out_dir, a.stride, a.target_frames, a.fps, a.max_frames,
+                  not a.no_smooth) for b in bags]
     print("\n=== Итог ===")
     for s in rows:
         print(f"{s['bag']:38s} кадров {s['frames']:4d}  сырых {s['raw']:4d}  "
