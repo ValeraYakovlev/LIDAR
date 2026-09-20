@@ -9,7 +9,7 @@ from rosbags.typesys import Stores, get_typestore
 
 from rail_detection import POINT_DTYPE
 from pipeline_procrustes_clearance import DynamicClearancePipeline
-from viz_clearance_video import create_box_sequence_linesets
+from viz_clearance_video import create_box_sequence_geometry
 
 def export_gif(dataset_name):
     # 1. Настройка путей
@@ -47,7 +47,7 @@ def export_gif(dataset_name):
     # Геометрия
     pcd_outlier = o3d.geometry.PointCloud()
     pcd_obstacle = o3d.geometry.PointCloud()
-    line_sets = []
+    ls_boxes = o3d.geometry.LineSet()
     
     is_first_frame = True
     frames = []
@@ -89,22 +89,28 @@ def export_gif(dataset_name):
             colors = payload.get("obstacle_colors")
             if colors is not None and len(colors) > 0:
                 pcd_obstacle.colors = o3d.utility.Vector3dVector(colors)
-            else:
-                pcd_obstacle.paint_uniform_color([1.0, 0.0, 0.0])
-            
-            W = box_params["width"]
-            H = box_params["height"]
-            rail_top_v = box_params.get("rail_top_v", 0.0)
-            boundaries = box_params.get("boundaries", [])
-            
-            new_line_sets = create_box_sequence_linesets(boundaries, W, H, frame_geom, rail_top_v)
+            if "clearance_boxes" in payload:
+                box_params = payload["clearance_boxes"]
+                pts, lns, cls = create_box_sequence_geometry(
+                    box_params["boundaries"], 
+                    box_params["width"], 
+                    box_params["height"], 
+                    payload["frame_geometry"], 
+                    box_params.get("rail_top_v", 0.0)
+                )
+                if len(pts) > 0:
+                    ls_boxes.points = o3d.utility.Vector3dVector(pts)
+                    ls_boxes.lines = o3d.utility.Vector2iVector(lns)
+                    ls_boxes.colors = o3d.utility.Vector3dVector(cls)
+                else:
+                    ls_boxes.points = o3d.utility.Vector3dVector(np.empty((0, 3)))
+                    ls_boxes.lines = o3d.utility.Vector2iVector(np.empty((0, 2), dtype=np.int32))
+                    ls_boxes.colors = o3d.utility.Vector3dVector(np.empty((0, 3)))
             
             if is_first_frame:
                 vis.add_geometry(pcd_outlier)
                 vis.add_geometry(pcd_obstacle)
-                for ls in new_line_sets:
-                    vis.add_geometry(ls)
-                    line_sets.append(ls)
+                vis.add_geometry(ls_boxes)
                 
                 # ЖЕСТКАЯ ФИКСАЦИЯ КАМЕРЫ (Крупно, строго сверху)
                 view_ctrl = vis.get_view_control()
@@ -121,13 +127,7 @@ def export_gif(dataset_name):
             else:
                 vis.update_geometry(pcd_outlier)
                 vis.update_geometry(pcd_obstacle)
-                
-                for ls in line_sets:
-                    vis.remove_geometry(ls, reset_bounding_box=False)
-                line_sets.clear()
-                for ls in new_line_sets:
-                    vis.add_geometry(ls, reset_bounding_box=False)
-                    line_sets.append(ls)
+                vis.update_geometry(ls_boxes)
             
             vis.poll_events()
             vis.update_renderer()
