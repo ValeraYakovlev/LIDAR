@@ -11,9 +11,17 @@ from rail_detection import POINT_DTYPE
 from pipeline_procrustes_clearance import DynamicClearancePipeline
 from viz_clearance_video import create_box_sequence_linesets
 
-def export_gif(dataset_name, output_filename="clearance_topdown.gif"):
+def export_gif(dataset_name):
     # 1. Настройка путей
     base_dir = Path(r"D:\Датасет")
+    # Если нужно брать из viz_clearance_video.py:
+    import re
+    try:
+        dataset_path = re.search(r"default=r'(D:\\[^']+)'", open('d:/LIDAR/viz_clearance_video.py', encoding='utf-8').read()).group(1)
+        base_dir = Path(dataset_path)
+    except:
+        pass
+        
     dataset_dir = base_dir / dataset_name
     
     db3_files = list(dataset_dir.glob("*.db3"))
@@ -22,6 +30,10 @@ def export_gif(dataset_name, output_filename="clearance_topdown.gif"):
         return
     db3_path = db3_files[0]
 
+    out_dir = Path(r"D:\LIDAR\output")
+    out_dir.mkdir(exist_ok=True)
+    output_filename = out_dir / f"{dataset_name}_clearance.gif"
+    
     print(f"Читаем файл: {db3_path}")
     
     # 2. Инициализация пайплайна
@@ -30,7 +42,7 @@ def export_gif(dataset_name, output_filename="clearance_topdown.gif"):
     
     # 3. Настройка Open3D визуализатора
     vis = o3d.visualization.Visualizer()
-    vis.create_window(width=800, height=1200, window_name="Render GIF (Top-Down)")
+    vis.create_window(width=800, height=1200, window_name="Render GIF (Top-Down)", visible=False)
     
     # Геометрия
     pcd_outlier = o3d.geometry.PointCloud()
@@ -101,7 +113,7 @@ def export_gif(dataset_name, output_filename="clearance_topdown.gif"):
                 # Вектор UP: чтобы вперед (-y) было направлено вверх на экране
                 view_ctrl.set_up([0.0, -1.0, 0.0])
                 # Смещаем центр обзора ближе к началу (чтобы начало координат было внизу экрана)
-                view_ctrl.set_lookat([0.0, -12.0, 0.0])
+                view_ctrl.set_lookat([0.0, -30.0, 0.0])
                 # Зум значительно приближен, чтобы не "висеть высоко в воздухе"
                 view_ctrl.set_zoom(0.22)
                 
@@ -122,7 +134,8 @@ def export_gif(dataset_name, output_filename="clearance_topdown.gif"):
             
             # Захват кадра (без альфа канала, float -> uint8)
             img_float = np.asarray(vis.capture_screen_float_buffer(do_render=True))
-            img_uint8 = (img_float * 255.0).astype(np.uint8)
+            # COPY THE ARRAY to prevent repeating last frame bug in Open3D offscreen buffers
+            img_uint8 = np.array(img_float * 255.0, copy=True).astype(np.uint8)
             frames.append(Image.fromarray(img_uint8))
             
             print(f"Кадр {i:03d} добавлен в GIF...", end='\r')
@@ -143,6 +156,4 @@ def export_gif(dataset_name, output_filename="clearance_topdown.gif"):
         print("Готово!")
 
 if __name__ == "__main__":
-    # Вы можете менять датасет из кода, как в viz_clearance_video.py
-    # Пример: export_gif("doubleT_platform")
     export_gif("roundT_squareT_pressureGate_squareT")

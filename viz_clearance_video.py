@@ -26,11 +26,10 @@ def track_to_sensor(d, u, v, frame):
 
 def create_box_sequence_linesets(boundaries, width, height, frame, rail_top_v):
     """
-    Создает геометрию для серии параллелепипедов и их эластичных соединений.
+    Рисует последовательность коробок. Использует ICP трансформации, если они есть.
     """
     linesets = []
 
-    # Прямоугольники (зеленые).
     for b in boundaries:
         d_s = b["start"]
         d_e = b["end"]
@@ -38,26 +37,44 @@ def create_box_sequence_linesets(boundaries, width, height, frame, rail_top_v):
         v_min = rail_top_v + 0.10
         v_max = v_min + height
         
-        # 8 вершин прямоугольника
-        corners = [
-            track_to_sensor(d_s,  width / 2.0, v_min, frame), # 0: сзади слева низ
-            track_to_sensor(d_s, -width / 2.0, v_min, frame), # 1: сзади справа низ
-            track_to_sensor(d_e,  width / 2.0, v_min, frame), # 2: спереди слева низ
-            track_to_sensor(d_e, -width / 2.0, v_min, frame), # 3: спереди справа низ
+        u_min = -width / 2.0
+        u_max = width / 2.0
+        
+        # 4 угла в 2D (координаты U, V, Z=0, W=1)
+        corners_2d = np.array([
+            [u_min, v_min, 0, 1],
+            [u_max, v_min, 0, 1],
+            [u_max, v_max, 0, 1],
+            [u_min, v_max, 0, 1]
+        ])
+        
+        if "T_inv" in b:
+            # Применяем обратное преобразование ICP
+            T_inv = b["T_inv"]
+            c_transformed = (T_inv @ corners_2d.T).T
+            u_c = c_transformed[:, 0]
+            v_c = c_transformed[:, 1]
+        else:
+            u_c = np.array([u_min, u_max, u_max, u_min])
+            v_c = np.array([v_min, v_min, v_max, v_max])
             
-            track_to_sensor(d_s,  width / 2.0, v_max, frame), # 4: сзади слева верх
-            track_to_sensor(d_s, -width / 2.0, v_max, frame), # 5: сзади справа верх
-            track_to_sensor(d_e,  width / 2.0, v_max, frame), # 6: спереди слева верх
-            track_to_sensor(d_e, -width / 2.0, v_max, frame), # 7: спереди справа верх
+        corners = []
+        # Передняя грань (d_s)
+        for i in range(4):
+            corners.append(track_to_sensor(d_s, u_c[i], v_c[i], frame))
+        # Задняя грань (d_e)
+        for i in range(4):
+            corners.append(track_to_sensor(d_e, u_c[i], v_c[i], frame))
+        
+        # Линии (ребра параллелепипеда) - строго без диагоналей!
+        lines = [
+            [0, 1], [1, 2], [2, 3], [3, 0], # Периметр задней грани
+            [4, 5], [5, 6], [6, 7], [7, 4], # Периметр передней грани
+            [0, 4], [1, 5], [2, 6], [3, 7]  # Продольные ребра
         ]
         
-        # Линии (ребра параллелепипеда)
-        lines = [
-            [0, 1], [2, 3], [0, 2], [1, 3], # нижняя грань
-            [4, 5], [6, 7], [4, 6], [5, 7], # верхняя грань
-            [0, 4], [1, 5], [2, 6], [3, 7]  # вертикальные ребра
-        ]
-        colors = [[0, 1, 0] for _ in range(len(lines))] # Зеленый цвет для коробок
+        # Если смещение ICP больше 0.1, можем подсветить коробку
+        colors = [[0, 1, 0] for _ in range(len(lines))]
         
         ls = o3d.geometry.LineSet()
         ls.points = o3d.utility.Vector3dVector(corners)
@@ -253,4 +270,4 @@ def main(bag_folder_name="doubleT_obstacle"):
 if __name__ == "__main__":
     # Вы можете поменять имя папки здесь, если запускаете из VS Code
     # Например: main("doubleT_platform")
-    main("doubleT_obstacle")
+    main("roundT_squareT_pressureGate_squareT")

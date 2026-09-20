@@ -182,104 +182,169 @@ class DynamicClearancePipeline:
             if b["pts_count"] > 0:
                 weight_full[mask] = 1.0 / b["pts_count"]
             
-        # --- 6. Эвристика оптимизации изгиба (Procrustes Flex) ---
+        # --- 6. Выравнивание ICP и Вычитание эталонного профиля ---
+        import open3d as o3d
+        
         valid_idx = np.where(mask_longitudinal)[0]
         d_val = d[valid_idx]
         u_val = u[valid_idx]
         v_val = v[valid_idx]
-        d_mid_val = d_mid_full[valid_idx]
-        weight_val = weight_full[valid_idx]
         
+        u_aligned = np.copy(u_val)
+        v_aligned = np.copy(v_val)
+        
+        # Определяем эталон (первые метры тоннеля, например первые 3 сегмента)
+        if len(boxes) >= 3:
+            ref_end_d = boxes[2]["end"]
+        elif len(boxes) > 0:
+            ref_end_d = boxes[-1]["end"]
+        else:
+            ref_end_d = 0.0
+            
+        ref_mask = (d_val >= 0.0) & (d_val <= ref_end_d)
+        
+        pcd_ref = None
+        if np.sum(ref_mask) > 100:
+            pts_ref = np.column_stack((u_val[ref_mask], v_val[ref_mask], np.zeros(np.sum(ref_mask))))
+            pcd_ref = o3d.geometry.PointCloud()
+            pcd_ref.points = o3d.utility.Vector3dVector(pts_ref)
+            pcd_ref = pcd_ref.voxel_down_sample(voxel_size=0.05)
+        
+        # Регистрация каждого звена
+        from scipy.spatial.transform import Rotation as R
+        from scipy.ndimage import gaussian_filter1d
+        
+        transforms = []
+        for b in boxes:
+            b_mask = (d_val >= b["start"]) & (d_val <= b["end"])
+            
+            if np.sum(b_mask) < 10 or pcd_ref is None:
+                b["T_inv"] = np.eye(4)
+                transforms.append(np.eye(4))
+                continue
+                
+            if b["end"] <= ref_end_d:
+                b["T_inv"] = np.eye(4)
+                transforms.append(np.eye(4))
+                continue
+                
+            pts_seg_raw = np.column_stack((u_val[b_mask], v_val[b_mask], np.zeros(np.sum(b_mask))))
+            pcd_seg = o3d.geometry.PointCloud()
+            pcd_seg.points = o3d.utility.Vector3dVector(pts_seg_raw)
+            pcd_seg = pcd_seg.voxel_down_sample(voxel_size=0.05)
+            
+            reg = o3d.pipelines.registration.registration_icp(
+                pcd_seg, pcd_ref, 0.5, np.eye(4),
+                o3d.pipelines.registration.TransformationEstimationPointToPoint(),
+                o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=30)
+            )
+            
+            T = reg.transformation
+            T_inv = np.linalg.inv(T)
+            b["T_inv_raw"] = T_inv
+            transforms.append(T_inv)
+            
+        # Сглаживание трансформаций
+        if len(transforms) > 0:
+            translations = np.array([T[:3, 3] for T in transforms])
+            rotations = [R.from_matrix(T[:3, :3]).as_euler('xyz', degrees=False) for T in transforms]
+            rotations = np.array(rotations)
+            
+            # Применяем фильтр Гаусса (sigma=1.0)
+            translations_smooth = gaussian_filter1d(translations, sigma=1.0, axis=0)
+            rotations_smooth = gaussian_filter1d(rotations, sigma=1.0, axis=0)
+            
+            for i, b in enumerate(boxes):
+                T_smooth = np.eye(4)
+                T_smooth[:3, :3] = R.from_euler('xyz', rotations_smooth[i]).as_matrix()
+                T_smooth[:3, 3] = translations_smooth[i]
+                b["T_inv"] = T_smooth
+
+        # Добавляем звенья-сцепки (links) для зоны препятствий в промежутках
+        all_segments = []
+        for i, b in enumerate(boxes):
+            all_segments.append(b)
+            if i < len(boxes) - 1:
+                # Сцепка между текущим и следующим звеном
+                link = {
+                    "start": b["end"],
+                    "end": boxes[i+1]["start"],
+                    "is_link": True,
+                }
+                # Интерполируем трансформацию для сцепки как среднее
+                T_link = np.eye(4)
+                rot1 = R.from_matrix(b["T_inv"][:3, :3])
+                rot2 = R.from_matrix(boxes[i+1]["T_inv"][:3, :3])
+                T_link[:3, :3] = R.from_euler('xyz', (rot1.as_euler('xyz') + rot2.as_euler('xyz')) / 2).as_matrix()
+                T_link[:3, 3] = (b["T_inv"][:3, 3] + boxes[i+1]["T_inv"][:3, 3]) / 2.0
+                link["T_inv"] = T_link
+                all_segments.append(link)
+
+        # Расширяем mask_longitudinal, чтобы включить точки в сцепках
+        for seg in all_segments:
+            mask = (d >= seg["start"]) & (d <= seg["end"])
+            mask_longitudinal |= mask
+
+        # Обновляем valid_idx и массивы
+        valid_idx = np.where(mask_longitudinal)[0]
+        d_val = d[valid_idx]
+        u_val = u[valid_idx]
+        v_val = v[valid_idx]
+        
+        u_aligned = np.copy(u_val)
+        v_aligned = np.copy(v_val)
+
+        # Выравниваем точки всего облака по сглаженным сегментам и сцепкам
+        for seg in all_segments:
+            s_mask = (d_val >= seg["start"]) & (d_val <= seg["end"])
+            if np.sum(s_mask) == 0: continue
+            
+            T_inv = seg["T_inv"]
+            pts_seg_raw = np.column_stack((u_val[s_mask], v_val[s_mask], np.zeros(np.sum(s_mask))))
+            pts_hom = np.column_stack((pts_seg_raw, np.ones(len(pts_seg_raw))))
+            
+            # Применяем прямую трансформацию (T_forward), так как T_inv хранит обратную
+            T_forward = np.linalg.inv(T_inv)
+            pts_aligned = (T_forward @ pts_hom.T).T
+            
+            u_aligned[s_mask] = pts_aligned[:, 0]
+            v_aligned[s_mask] = pts_aligned[:, 1]
+
+
+        # --- 7. Вычитание фона и поиск препятствий внутри габарита ---
         v_min_base = rail_top_v + 0.10
         v_max_base = v_min_base + self.box_height
         u_min_base = -self.box_width / 2.0
         u_max_base =  self.box_width / 2.0
         
-        cand_mask = (u_val >= u_min_base - 1.5) & (u_val <= u_max_base + 1.5) & \
-                    (v_val >= v_min_base - 0.5) & (v_val <= v_max_base + 0.5)
-        d_cand = d_val[cand_mask]
-        u_cand = u_val[cand_mask]
-        v_cand = v_val[cand_mask]
-        d_mid_cand = d_mid_val[cand_mask]
-        weight_cand = weight_val[cand_mask]
+        mask_lateral = (u_aligned >= u_min_base) & (u_aligned <= u_max_base)
+        mask_vertical = (v_aligned >= v_min_base) & (v_aligned <= v_max_base)
+        mask_inside = mask_lateral & mask_vertical
         
-        # Динамические веса для штрафа изгиба
-        far_pts_count = np.sum(d_cand > 20.0)
-        density_factor = np.clip(far_pts_count / 1000.0, 0.05, 1.0)
+        mask_bg_sub = np.zeros_like(mask_inside, dtype=bool)
         
-        inertia_weight = 200.0 * density_factor
-        center_weight = 500.0 * density_factor
-        
-        # --- Coarse Grid Search + L-BFGS-B ---
-        best_cost = np.inf
-        best_dx_far = 0.0
-        best_dz_far = 0.0
-        
-        def cost_func(params):
-            dx_f, dz_f = params
-            # Вычисляем сдвиг, привязанный к центрам звеньев (d_mid_cand вместо d_cand)
-            # Это дает идеальное соответствие прямым граням визуальных прямоугольников!
-            dx_arr = dx_f * (d_mid_cand / 40.0)**2
-            dz_arr = dz_f * (d_mid_cand / 40.0)**2
+        if pcd_ref is not None and np.any(mask_inside):
+            inside_idx = np.where(mask_inside)[0]
+            pts_query = np.column_stack((u_aligned[inside_idx], v_aligned[inside_idx], np.zeros(len(inside_idx))))
             
-            u_min_pad = u_min_base - 0.10
-            u_max_pad = u_max_base + 0.10
-            v_min_pad = v_min_base - 0.10
-            v_max_pad = v_max_base + 0.10
+            pcd_query = o3d.geometry.PointCloud()
+            pcd_query.points = o3d.utility.Vector3dVector(pts_query)
             
-            dist_u = np.minimum(u_cand - (u_min_pad + dx_arr), (u_max_pad + dx_arr) - u_cand)
-            dist_v = np.minimum(v_cand - (v_min_pad + dz_arr), (v_max_pad + dz_arr) - v_cand)
+            # Векторизованный поиск расстояний до эталона
+            distances = np.asarray(pcd_query.compute_point_cloud_distance(pcd_ref))
             
-            inside_mask = (dist_u > 0) & (dist_v > 0)
-            if np.any(inside_mask):
-                penetration = np.minimum(dist_u[inside_mask], dist_v[inside_mask])
-                w = weight_cand[inside_mask]
-                
-                # Штраф высчитывается отдельно (нормируется) по каждому звену!
-                # Теперь звено со 100 точками дает такой же штраф, как звено с 10 000 точек.
-                cost_points = np.sum(penetration * w) * 100000.0 + np.sum(w) * 10000.0
-            else:
-                cost_points = 0.0
-                
-            return cost_points + \
-                   (dx_f**2 + dz_f**2) * center_weight + \
-                   ((dx_f - self.prev_dx)**2 + (dz_f - self.prev_dz)**2) * inertia_weight
-
-        for dx_far in np.arange(-1.2, 1.21, 0.3):
-            for dz_far in np.arange(-0.5, 0.51, 0.2):
-                cost = cost_func([dx_far, dz_far])
-                if cost < best_cost:
-                    best_cost = cost
-                    best_dx_far = dx_far
-                    best_dz_far = dz_far
-                    
-        from scipy.optimize import minimize
-        res = minimize(cost_func, [best_dx_far, best_dz_far], method='L-BFGS-B', bounds=[(-1.2, 1.2), (-0.5, 0.5)])
-        best_dx_far, best_dz_far = res.x
+            # Отклонение более 15 см означает, что это инородный объект (препятствие)
+            is_obstacle = distances > 0.15
+            mask_bg_sub[inside_idx[is_obstacle]] = True
+            
+        obstacle_points = points[valid_idx][mask_bg_sub]
+        obstacle_d = d_val[mask_bg_sub]
         
-        final_dx_far = self.alpha * best_dx_far + (1.0 - self.alpha) * self.prev_dx
-        final_dz_far = self.alpha * best_dz_far + (1.0 - self.alpha) * self.prev_dz
-        self.prev_dx = final_dx_far
-        self.prev_dz = final_dz_far
-        
-        # Проверяем реальные точки препятствий (также с квантованием сдвига d_mid_full)
-        u_shifted = u - final_dx_far * (d_mid_full / 40.0)**2
-        v_shifted = v - final_dz_far * (d_mid_full / 40.0)**2
-        
-        mask_lateral = (u_shifted >= u_min_base) & (u_shifted <= u_max_base)
-        mask_vertical = (v_shifted >= v_min_base) & (v_shifted <= v_max_base)
-        # ---------------------------------------------------------
-        
-        # Финальная маска
-        mask_inside_boxes = mask_lateral & mask_vertical & mask_longitudinal
-        obstacle_points = points[mask_inside_boxes]
-        obstacle_d = d[mask_inside_boxes]
-        
-        # Вычисляем градиент вероятности (цвета)
+        # Вычисляем градиент вероятности (цвета) на выровненных координатах
         obstacle_colors = None
         if len(obstacle_points) > 0:
-            obs_u = u_shifted[mask_inside_boxes]
-            obs_v = v_shifted[mask_inside_boxes]
+            obs_u = u_aligned[mask_bg_sub]
+            obs_v = v_aligned[mask_bg_sub]
             
             d_left = obs_u - u_min_base
             d_right = u_max_base - obs_u
@@ -295,19 +360,6 @@ class DynamicClearancePipeline:
             B = np.zeros_like(danger)
             obstacle_colors = np.vstack([R, G, B]).T
         
-        # Обновляем полиномы эластичных осей для визуализации
-        new_axis = frame["elastic_axis"].coeffs.copy()
-        if len(new_axis) < 3:
-            new_axis = np.pad(new_axis, (3 - len(new_axis), 0), 'constant')
-        new_axis[-3] += final_dx_far / (40.0**2)
-        frame["elastic_axis"] = np.poly1d(new_axis)
-        
-        new_floor = frame["elastic_floor"].coeffs.copy()
-        if len(new_floor) < 3:
-            new_floor = np.pad(new_floor, (3 - len(new_floor), 0), 'constant')
-        new_floor[-3] += final_dz_far / (40.0**2)
-        frame["elastic_floor"] = np.poly1d(new_floor)
-        
         # Отчет
         min_distance = np.min(obstacle_d) if len(obstacle_d) > 0 else np.inf
         
@@ -319,7 +371,7 @@ class DynamicClearancePipeline:
             "frame_geometry": frame,
             "obstacle_colors": obstacle_colors,
             "clearance_boxes": {
-                "boundaries": boxes,
+                "boundaries": all_segments,
                 "width": float(self.box_width),
                 "height": float(self.box_height),
                 "gap": float(self.box_gap),
