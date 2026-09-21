@@ -24,48 +24,69 @@ def track_to_sensor(d, u, v, frame):
     y = -d
     return x, y, z
 
-def create_box_sequence_linesets(boundaries, width, height, frame, rail_top_v):
+def create_box_sequence_geometry(boundaries, width, height, frame, rail_top_v):
     """
-    Создает геометрию для серии параллелепипедов и их эластичных соединений.
+    Рисует последовательность коробок единым мешем (points, lines, colors).
+    Промежутки между коробками отрисовываются как соединительные деформируемые линии (сцепки).
     """
-    linesets = []
-
-    # Прямоугольники (зеленые).
+    all_points = []
+    all_lines = []
+    all_colors = []
+    
+    offset = 0
+    has_prev_box = False
+    
     for b in boundaries:
+        if b.get("is_link", False):
+            continue
+            
         d_s = b["start"]
         d_e = b["end"]
         
         v_min = rail_top_v + 0.10
         v_max = v_min + height
         
-        # 8 вершин прямоугольника
-        corners = [
-            track_to_sensor(d_s,  width / 2.0, v_min, frame), # 0: сзади слева низ
-            track_to_sensor(d_s, -width / 2.0, v_min, frame), # 1: сзади справа низ
-            track_to_sensor(d_e,  width / 2.0, v_min, frame), # 2: спереди слева низ
-            track_to_sensor(d_e, -width / 2.0, v_min, frame), # 3: спереди справа низ
+        u_min = -width / 2.0
+        u_max = width / 2.0
+        
+        corners_2d = np.array([
+            [u_min, v_min, 0, 1],
+            [u_max, v_min, 0, 1],
+            [u_max, v_max, 0, 1],
+            [u_min, v_max, 0, 1]
+        ])
+        
+        if "T_inv" in b:
+            c_transformed = (b["T_inv"] @ corners_2d.T).T
+            u_c, v_c = c_transformed[:, 0], c_transformed[:, 1]
+        else:
+            u_c = np.array([u_min, u_max, u_max, u_min])
+            v_c = np.array([v_min, v_min, v_max, v_max])
             
-            track_to_sensor(d_s,  width / 2.0, v_max, frame), # 4: сзади слева верх
-            track_to_sensor(d_s, -width / 2.0, v_max, frame), # 5: сзади справа верх
-            track_to_sensor(d_e,  width / 2.0, v_max, frame), # 6: спереди слева верх
-            track_to_sensor(d_e, -width / 2.0, v_max, frame), # 7: спереди справа верх
-        ]
+        corners = []
+        for i in range(4): corners.append(track_to_sensor(d_s, u_c[i], v_c[i], frame))
+        for i in range(4): corners.append(track_to_sensor(d_e, u_c[i], v_c[i], frame))
         
-        # Линии (ребра параллелепипеда)
         lines = [
-            [0, 1], [2, 3], [0, 2], [1, 3], # нижняя грань
-            [4, 5], [6, 7], [4, 6], [5, 7], # верхняя грань
-            [0, 4], [1, 5], [2, 6], [3, 7]  # вертикальные ребра
+            [0, 1], [1, 2], [2, 3], [3, 0], # front
+            [4, 5], [5, 6], [6, 7], [7, 4], # rear
+            [0, 4], [1, 5], [2, 6], [3, 7]  # longitudinal
         ]
-        colors = [[0, 1, 0] for _ in range(len(lines))] # Зеленый цвет для коробок
         
-        ls = o3d.geometry.LineSet()
-        ls.points = o3d.utility.Vector3dVector(corners)
-        ls.lines = o3d.utility.Vector2iVector(lines)
-        ls.colors = o3d.utility.Vector3dVector(colors)
-        linesets.append(ls)
+        for p in corners: all_points.append(p)
+        for l in lines: all_lines.append([l[0] + offset, l[1] + offset])
+        for _ in lines: all_colors.append([0, 1, 0])
         
-    return linesets
+        # Если есть предыдущая коробка, рисуем деформируемую сцепку (4 линии)
+        if has_prev_box:
+            for i in range(4):
+                all_lines.append([offset - 4 + i, offset + i])
+                all_colors.append([0, 1, 0])
+                
+        has_prev_box = True
+        offset += 8
+        
+    return np.array(all_points, dtype=np.float64), np.array(all_lines, dtype=np.int32), np.array(all_colors, dtype=np.float64)
 
 import argparse
 
@@ -90,9 +111,8 @@ def main(bag_folder_name="doubleT_obstacle"):
     if not db3_files:
         print(f"Не найден .db3 файл в {bag_dir}")
         return
-    db3_path = db3_files[0]
         
-    print(f"Используем файл: {db3_path}")
+    print(f"Читаем ROS bag директорию: {bag_dir}")
     
     # Параметры из ТЗ: 3.1м ширина, 3.7м высота, 1м длина. Зазор 0.25м.
     pipeline = DynamicClearancePipeline()
@@ -105,7 +125,7 @@ def main(bag_folder_name="doubleT_obstacle"):
     pcd_inlier = o3d.geometry.PointCloud()
     pcd_outlier = o3d.geometry.PointCloud()
     geometries_added = False
-    box_linesets = []
+    ls_boxes = o3d.geometry.LineSet()
     
     from rosbags.highlevel import AnyReader
     
@@ -125,7 +145,8 @@ def main(bag_folder_name="doubleT_obstacle"):
     print("Проигрывание началось. Используйте ползунок в окне Timeline для перемотки.")
     try:
         proc_times = []
-        reader = AnyReader([db3_path], default_typestore=typestore)
+        # Открываем напрямую .db3 файлы
+        reader = AnyReader(db3_files, default_typestore=typestore)
         with reader:
             messages_iter = iter(reader.messages()) if hasattr(reader, 'messages') else iter([])
             
@@ -196,13 +217,9 @@ def main(bag_folder_name="doubleT_obstacle"):
                         pcd_inlier.points = o3d.utility.Vector3dVector(np.empty((0, 3)))
                         if hasattr(pcd_inlier, 'colors'):
                             pcd_inlier.colors = o3d.utility.Vector3dVector(np.empty((0, 3)))
-                        
-                    for ls in box_linesets:
-                        vis.remove_geometry(ls, reset_bounding_box=False)
-                    box_linesets.clear()
-                    
+                            
                     box_params = cached["payload"]["clearance_boxes"]
-                    new_linesets = create_box_sequence_linesets(
+                    pts, lns, cls = create_box_sequence_geometry(
                         box_params.get("boundaries", []), 
                         box_params["width"], 
                         box_params["height"], 
@@ -210,13 +227,19 @@ def main(bag_folder_name="doubleT_obstacle"):
                         box_params.get("rail_top_v", 0.0)
                     )
                     
-                    for ls in new_linesets:
-                        box_linesets.append(ls)
-                        vis.add_geometry(ls, reset_bounding_box=False)
+                    if len(pts) > 0:
+                        ls_boxes.points = o3d.utility.Vector3dVector(pts)
+                        ls_boxes.lines = o3d.utility.Vector2iVector(lns)
+                        ls_boxes.colors = o3d.utility.Vector3dVector(cls)
+                    else:
+                        ls_boxes.points = o3d.utility.Vector3dVector(np.empty((0, 3)))
+                        ls_boxes.lines = o3d.utility.Vector2iVector(np.empty((0, 2), dtype=np.int32))
+                        ls_boxes.colors = o3d.utility.Vector3dVector(np.empty((0, 3)))
                         
                     if not geometries_added:
                         vis.add_geometry(pcd_outlier)
                         vis.add_geometry(pcd_inlier)
+                        vis.add_geometry(ls_boxes)
                         ctr = vis.get_view_control()
                         ctr.set_lookat([0, -20, 0])
                         ctr.set_up([0, 0, 1])
@@ -226,6 +249,7 @@ def main(bag_folder_name="doubleT_obstacle"):
                     else:
                         vis.update_geometry(pcd_outlier)
                         vis.update_geometry(pcd_inlier)
+                        vis.update_geometry(ls_boxes)
                         
                     med_time = np.median(proc_times) if proc_times else 0.0
                     time_str = f"| Pipeline Median: {med_time:.1f} ms"
@@ -253,4 +277,4 @@ def main(bag_folder_name="doubleT_obstacle"):
 if __name__ == "__main__":
     # Вы можете поменять имя папки здесь, если запускаете из VS Code
     # Например: main("doubleT_platform")
-    main("doubleT_obstacle")
+    main("roundT_pressureGate_roundT")
