@@ -19,7 +19,6 @@ class DynamicClearancePipeline:
         
         self.frame_count = 0
         self.fixed_boxes = None
-        self.cached_kdtree_2d = None
         
     def process_pointcloud(self, points):
         """
@@ -186,19 +185,17 @@ class DynamicClearancePipeline:
             if b["pts_count"] > 0:
                 weight_full[mask] = 1.0 / b["pts_count"]
                 
-        # 5.5 Эталон тоннеля: берем по 5 цилиндров, соответствующих звеньям, каждые 10 кадров
-        if self.frame_count % 10 == 1 or self.cached_kdtree_2d is None:
-            if len(boxes) > 0:
-                limit_idx = min(5, len(boxes))
-                ref_end_d = boxes[limit_idx - 1]["end"]
-                
-                ref_mask = (d > 0.0) & (d <= ref_end_d)
-                if np.any(ref_mask):
-                    pts_2d = np.column_stack((u[ref_mask], v[ref_mask]))
-                    from scipy.spatial import cKDTree
-                    self.cached_kdtree_2d = cKDTree(pts_2d)
-        
-        ref_kdtree_2d = self.cached_kdtree_2d
+        # 5.5 Строим эталон тоннеля ДЛЯ ТЕКУЩЕГО КАДРА по первым 5 звеньям
+        ref_kdtree_2d = None
+        if len(boxes) > 0:
+            limit_idx = min(5, len(boxes))
+            ref_end_d = boxes[limit_idx - 1]["end"]
+            
+            ref_mask = (d > 0.0) & (d <= ref_end_d)
+            if np.any(ref_mask):
+                pts_2d = np.column_stack((u[ref_mask], v[ref_mask]))
+                from scipy.spatial import cKDTree
+                ref_kdtree_2d = cKDTree(pts_2d)
             
         # --- 6. Эвристика оптимизации изгиба (Procrustes Flex) ---
         valid_idx = np.where(mask_longitudinal)[0]
@@ -222,13 +219,11 @@ class DynamicClearancePipeline:
         weight_cand = weight_val[cand_mask]
         
         # Оптимизация оси должна избегать стен тоннеля, а не препятствий внутри!
+        # Фильтруем точки: оставляем только те, что принадлежат "фону" тоннеля
         if ref_kdtree_2d is not None:
-            # Выравниваем точки предварительным сдвигом, чтобы сравнить с эталоном
-            dx_arr_prev = self.prev_dx * (d_mid_cand / 40.0)**2
-            dz_arr_prev = self.prev_dz * (d_mid_cand / 40.0)**2
-            pts_2d = np.column_stack((u_cand - dx_arr_prev, v_cand - dz_arr_prev))
+            pts_2d = np.column_stack((u_cand, v_cand))
             distances, _ = ref_kdtree_2d.query(pts_2d)
-            is_tunnel = distances < 0.25
+            is_tunnel = distances < 0.15
             
             d_cand = d_cand[is_tunnel]
             u_cand = u_cand[is_tunnel]
@@ -312,7 +307,17 @@ class DynamicClearancePipeline:
         obs_v = v_shifted[mask_inside_boxes]
         obstacle_d = d[mask_inside_boxes]
         
-
+        # 7. Вычитание фона тоннеля (Background Subtraction) для препятствий
+        if ref_kdtree_2d is not None and len(obstacle_points) > 0:
+            obs_pts_2d = np.column_stack((u[mask_inside_boxes], v[mask_inside_boxes]))
+            dist_to_wall, _ = ref_kdtree_2d.query(obs_pts_2d)
+            # Если точка дальше 15 см от известной стены - это реальное препятствие (а не стена, попавшая в габарит)
+            true_obstacle_mask = dist_to_wall > 0.15
+            
+            obstacle_points = obstacle_points[true_obstacle_mask]
+            obstacle_d = obstacle_d[true_obstacle_mask]
+            obs_u = obs_u[true_obstacle_mask]
+            obs_v = obs_v[true_obstacle_mask]
             
         obstacle_colors = None
         if len(obstacle_points) > 0:
@@ -334,7 +339,7 @@ class DynamicClearancePipeline:
             colors[mask_red] = [1.0, 0.0, 0.0]
             
             obstacle_colors = colors
-            
+        
         # Обновляем полиномы эластичных осей для визуализации
         new_axis = frame["elastic_axis"].coeffs.copy()
         if len(new_axis) < 3:

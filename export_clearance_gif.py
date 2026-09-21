@@ -46,7 +46,6 @@ def export_gif(dataset_name):
     # Геометрия
     pcd_outlier = o3d.geometry.PointCloud()
     pcd_obstacle = o3d.geometry.PointCloud()
-    pcd_tunnel = o3d.geometry.PointCloud()
     ls_boxes = o3d.geometry.LineSet()
     
     is_first_frame = True
@@ -92,15 +91,6 @@ def export_gif(dataset_name):
             colors = payload.get("obstacle_colors")
             if colors is not None and len(colors) > 0:
                 pcd_obstacle.colors = o3d.utility.Vector3dVector(colors)
-                
-            tunnel_pts = payload.get("tunnel_points")
-            if tunnel_pts is not None and len(tunnel_pts) > 0:
-                tp_xyz = np.column_stack((tunnel_pts['x'], tunnel_pts['y'], tunnel_pts['z']))
-                pcd_tunnel.points = o3d.utility.Vector3dVector(tp_xyz)
-                pcd_tunnel.paint_uniform_color([0.6, 0.0, 0.8])
-            else:
-                pcd_tunnel.points = o3d.utility.Vector3dVector(np.array([[0.0, 0.0, -1000.0]]))
-                
             if "clearance_boxes" in payload:
                 box_params = payload["clearance_boxes"]
                 pts, lns, cls = create_box_sequence_geometry(
@@ -121,7 +111,6 @@ def export_gif(dataset_name):
             
             if is_first_frame:
                 vis.add_geometry(pcd_outlier)
-                vis.add_geometry(pcd_tunnel)
                 vis.add_geometry(pcd_obstacle)
                 vis.add_geometry(ls_boxes)
                 
@@ -139,7 +128,6 @@ def export_gif(dataset_name):
                 is_first_frame = False
             else:
                 vis.update_geometry(pcd_outlier)
-                vis.update_geometry(pcd_tunnel)
                 vis.update_geometry(pcd_obstacle)
                 vis.update_geometry(ls_boxes)
             

@@ -217,7 +217,7 @@ def main(bag_folder_name="doubleT_obstacle"):
                         pcd_inlier.points = o3d.utility.Vector3dVector(np.empty((0, 3)))
                         if hasattr(pcd_inlier, 'colors'):
                             pcd_inlier.colors = o3d.utility.Vector3dVector(np.empty((0, 3)))
-                            
+                        
                     box_params = cached["payload"]["clearance_boxes"]
                     pts, lns, cls = create_box_sequence_geometry(
                         box_params.get("boundaries", []), 
@@ -277,4 +277,4 @@ def main(bag_folder_name="doubleT_obstacle"):
 if __name__ == "__main__":
     # Вы можете поменять имя папки здесь, если запускаете из VS Code
     # Например: main("doubleT_platform")
-    main("roundT_pressureGate_roundT")
+    main("doubleT_obstacle")
