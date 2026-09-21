@@ -3,14 +3,6 @@ from rail_detection.tunnel_frame import fit_track_frame, to_track_coords
 
 class DynamicClearancePipeline:
     def __init__(self, box_width=2.7, box_height=3.5, box_length=1.0, box_gap=0.45, points_per_box=1000):
-        """
-        Инициализация параметров габарита.
-        :param box_width: Ширина габарита (м).
-        :param box_height: Высота габарита (м).
-        :param box_length: Минимальная длина единичного сегмента габарита (м).
-        :param box_gap: Зазор между сегментами габарита (м).
-        :param points_per_box: Целевое количество точек в одном звене для динамического удлинения.
-        """
         self.box_width = box_width
         self.box_height = box_height
         self.box_length = box_length
@@ -24,6 +16,9 @@ class DynamicClearancePipeline:
         self.prev_rail_top = None
         self.prev_dx = 0.0
         self.prev_dz = 0.0
+        
+        self.frame_count = 0
+        self.fixed_boxes = None
         
     def process_pointcloud(self, points):
         """
@@ -113,6 +108,8 @@ class DynamicClearancePipeline:
         else:
             d, u, v = to_track_coords(x, y, z, frame)
             
+        self.frame_count += 1
+        
         # 3. Вычисление вертикальной привязки к рельсам со сглаживанием
         gauge = frame.get("gauge", 1.52)
         rail_mask = (np.abs(np.abs(u) - gauge / 2.0) <= 0.15) & (v >= -0.1) & (v <= 0.3) & (d > 0)
@@ -138,34 +135,40 @@ class DynamicClearancePipeline:
         d_start = rail_d_start if rail_d_start > 0 else np.min(valid_d)
         
         # 5. Динамическая логика звеньев (зависимость от плотности точек)
-        boxes = []
-        current_d = d_start
-        N_target = getattr(self, 'points_per_box', 1000)  # Регулируется здесь (по умолчанию 1000)
-        
-        while current_d < np.max(valid_d):
-            pts_ahead = valid_d[valid_d >= current_d]
-            if len(pts_ahead) == 0:
-                break
-                
-            pts_ahead_sorted = np.sort(pts_ahead)
-            if len(pts_ahead_sorted) >= N_target:
-                d_end_target = pts_ahead_sorted[N_target - 1]
-            else:
-                d_end_target = pts_ahead_sorted[-1]
-                
-            d_end = max(d_end_target, current_d + self.box_length)
-            pts_count = np.sum((valid_d >= current_d) & (valid_d <= d_end))
+        if self.fixed_boxes is not None:
+            boxes = [b.copy() for b in self.fixed_boxes]
+        else:
+            boxes = []
+            current_d = d_start
+            N_target = getattr(self, 'points_per_box', 1000)
             
-            b = {
-                "start": float(current_d), 
-                "end": float(d_end), 
-                "length": float(d_end - current_d), 
-                "pts_count": int(pts_count)
-            }
-            boxes.append(b)
-            current_d = d_end + self.box_gap
-            if len(boxes) >= 150: 
-                break
+            while current_d < np.max(valid_d):
+                pts_ahead = valid_d[valid_d >= current_d]
+                if len(pts_ahead) == 0:
+                    break
+                    
+                pts_ahead_sorted = np.sort(pts_ahead)
+                if len(pts_ahead_sorted) >= N_target:
+                    d_end_target = pts_ahead_sorted[N_target - 1]
+                else:
+                    d_end_target = pts_ahead_sorted[-1]
+                    
+                d_end = max(d_end_target, current_d + self.box_length)
+                pts_count = np.sum((valid_d >= current_d) & (valid_d <= d_end))
+                
+                b = {
+                    "start": float(current_d), 
+                    "end": float(d_end), 
+                    "length": float(d_end - current_d), 
+                    "pts_count": int(pts_count)
+                }
+                boxes.append(b)
+                current_d = d_end + self.box_gap
+                if len(boxes) >= 150: 
+                    break
+            
+            if self.frame_count >= 10:
+                self.fixed_boxes = [b.copy() for b in boxes]
         
         # Отладка в консоль: показываем длину каждого звена и количество точек в нем
         debug_str = " | ".join([f"L={b['length']:.1f}m ({b['pts_count']} pts)" for b in boxes])
@@ -181,6 +184,18 @@ class DynamicClearancePipeline:
             d_mid_full[mask] = (b["start"] + b["end"]) / 2.0
             if b["pts_count"] > 0:
                 weight_full[mask] = 1.0 / b["pts_count"]
+                
+        # 5.5 Строим эталон тоннеля ДЛЯ ТЕКУЩЕГО КАДРА по первым 5 звеньям
+        ref_kdtree_2d = None
+        if len(boxes) > 0:
+            limit_idx = min(5, len(boxes))
+            ref_end_d = boxes[limit_idx - 1]["end"]
+            
+            ref_mask = (d > 0.0) & (d <= ref_end_d)
+            if np.any(ref_mask):
+                pts_2d = np.column_stack((u[ref_mask], v[ref_mask]))
+                from scipy.spatial import cKDTree
+                ref_kdtree_2d = cKDTree(pts_2d)
             
         # --- 6. Эвристика оптимизации изгиба (Procrustes Flex) ---
         valid_idx = np.where(mask_longitudinal)[0]
@@ -202,6 +217,20 @@ class DynamicClearancePipeline:
         v_cand = v_val[cand_mask]
         d_mid_cand = d_mid_val[cand_mask]
         weight_cand = weight_val[cand_mask]
+        
+        # Оптимизация оси должна избегать стен тоннеля, а не препятствий внутри!
+        # Фильтруем точки: оставляем только те, что принадлежат "фону" тоннеля
+        if ref_kdtree_2d is not None:
+            pts_2d = np.column_stack((u_cand, v_cand))
+            distances, _ = ref_kdtree_2d.query(pts_2d)
+            is_tunnel = distances < 0.15
+            
+            d_cand = d_cand[is_tunnel]
+            u_cand = u_cand[is_tunnel]
+            v_cand = v_cand[is_tunnel]
+            d_mid_cand = d_mid_cand[is_tunnel]
+            weight_cand = weight_cand[is_tunnel]
+
         
         # Динамические веса для штрафа изгиба
         far_pts_count = np.sum(d_cand > 20.0)
@@ -273,27 +302,43 @@ class DynamicClearancePipeline:
         # Финальная маска
         mask_inside_boxes = mask_lateral & mask_vertical & mask_longitudinal
         obstacle_points = points[mask_inside_boxes]
+        
+        obs_u = u_shifted[mask_inside_boxes]
+        obs_v = v_shifted[mask_inside_boxes]
         obstacle_d = d[mask_inside_boxes]
         
-        # Вычисляем градиент вероятности (цвета)
+        # 7. Вычитание фона тоннеля (Background Subtraction) для препятствий
+        if ref_kdtree_2d is not None and len(obstacle_points) > 0:
+            obs_pts_2d = np.column_stack((u[mask_inside_boxes], v[mask_inside_boxes]))
+            dist_to_wall, _ = ref_kdtree_2d.query(obs_pts_2d)
+            # Если точка дальше 15 см от известной стены - это реальное препятствие (а не стена, попавшая в габарит)
+            true_obstacle_mask = dist_to_wall > 0.15
+            
+            obstacle_points = obstacle_points[true_obstacle_mask]
+            obstacle_d = obstacle_d[true_obstacle_mask]
+            obs_u = obs_u[true_obstacle_mask]
+            obs_v = obs_v[true_obstacle_mask]
+            
         obstacle_colors = None
         if len(obstacle_points) > 0:
-            obs_u = u_shifted[mask_inside_boxes]
-            obs_v = v_shifted[mask_inside_boxes]
+            abs_u = np.abs(obs_u)
             
-            d_left = obs_u - u_min_base
-            d_right = u_max_base - obs_u
-            d_top = v_max_base - obs_v
+            core_u_max = 1.05
+            core_v_max = v_min_base + 3.0
             
-            # Вероятность максимальна в центре с отступом 50см (кроме низа)
-            danger = np.minimum.reduce([d_left / 0.5, d_right / 0.5, d_top / 0.5])
-            danger = np.clip(danger, 0.0, 1.0)
+            mid_u_max = 1.2
+            mid_v_max = v_min_base + 3.25
             
-            # Цвет: края (0.0) -> Зеленый, середина (0.5) -> Желтый, центр (1.0) -> Красный
-            R = np.clip(2.0 * danger, 0.0, 1.0)
-            G = np.clip(2.0 * (1.0 - danger), 0.0, 1.0)
-            B = np.zeros_like(danger)
-            obstacle_colors = np.vstack([R, G, B]).T
+            colors = np.zeros((len(abs_u), 3))
+            colors[:, 1] = 1.0 # Базово все зеленые
+            
+            mask_yellow = (abs_u <= mid_u_max) & (obs_v <= mid_v_max)
+            colors[mask_yellow] = [1.0, 1.0, 0.0]
+            
+            mask_red = (abs_u <= core_u_max) & (obs_v <= core_v_max)
+            colors[mask_red] = [1.0, 0.0, 0.0]
+            
+            obstacle_colors = colors
         
         # Обновляем полиномы эластичных осей для визуализации
         new_axis = frame["elastic_axis"].coeffs.copy()
@@ -324,7 +369,8 @@ class DynamicClearancePipeline:
                 "height": float(self.box_height),
                 "gap": float(self.box_gap),
                 "rail_top_v": float(rail_top_v)
-            }
+            },
+            "frame_idx": self.frame_count
         }
         
         return obstacle_points, min_distance, ros_payload
