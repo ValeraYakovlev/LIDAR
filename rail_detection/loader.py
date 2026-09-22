@@ -5,6 +5,8 @@ from pathlib import Path
 import numpy as np
 from rosbags.highlevel import AnyReader
 
+from rosbags.typesys import Stores, get_typestore
+
 POINT_DTYPE = np.dtype([
     ('x', '<f4'), ('y', '<f4'), ('z', '<f4'), ('intensity', '<f4'),
     ('ring', '<u2'), ('timestamp', '<f8'),
@@ -32,7 +34,7 @@ def load_frame(bag_dir, frame_idx=None):
     Возвращает (points: np.ndarray[POINT_DTYPE], n_frames: int).
     """
     bag_dir = Path(bag_dir)
-    with AnyReader([bag_dir]) as reader:
+    with AnyReader([bag_dir], default_typestore=get_typestore(Stores.LATEST)) as reader:
         conns = reader.connections
         n = conns[0].msgcount
         target = n // 2 if frame_idx is None else frame_idx
@@ -47,7 +49,7 @@ def load_frame(bag_dir, frame_idx=None):
 def frame_count(bag_dir):
     """Число кадров в bag без чтения самих сообщений (берётся из индекса
     sqlite) — нужно, чтобы выбрать шаг прохода до начала чтения."""
-    with AnyReader([Path(bag_dir)]) as reader:
+    with AnyReader([Path(bag_dir)], default_typestore=get_typestore(Stores.LATEST)) as reader:
         return reader.connections[0].msgcount
 
 
@@ -65,7 +67,7 @@ def iter_selected_frames(bag_dir, frame_indices):
     last = want[-1]
     want_set = set(want)
     bag_dir = Path(bag_dir)
-    with AnyReader([bag_dir]) as reader:
+    with AnyReader([bag_dir], default_typestore=get_typestore(Stores.LATEST)) as reader:
         conns = reader.connections
         for i, (conn, ts, rawdata) in enumerate(reader.messages(connections=conns)):
             if i in want_set:
@@ -86,7 +88,7 @@ def iter_frames(bag_dir, stride=1, max_frames=None):
     """
     bag_dir = Path(bag_dir)
     yielded = 0
-    with AnyReader([bag_dir]) as reader:
+    with AnyReader([bag_dir], default_typestore=get_typestore(Stores.LATEST)) as reader:
         conns = reader.connections
         n = conns[0].msgcount
         for i, (conn, ts, rawdata) in enumerate(reader.messages(connections=conns)):
