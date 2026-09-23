@@ -199,7 +199,7 @@ def iter_test_frames(dataset, test_set):
 def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
              use_rails=True, rail_roles=None, track=False, surface_tol=None,
              accumulate=None, deep=False, beta_prior=None, sticky=None,
-             min_half_width=None):
+             min_half_width=None, width_near_only=None):
     with open(test_set_path) as f:
         test_set = json.load(f)["test_set"]
     bins = WALL_DEPTH_BINS_DEEP if deep else WALL_DEPTH_BINS
@@ -225,7 +225,8 @@ def evaluate(dataset, test_set_path, compare=False, verbose=True, collect=None,
         kw = dict(use_rails=use_rails, surface_tol=surface_tol,
                   **({} if rail_roles is None else {'rail_roles': rail_roles}),
                   **{k: v for k, v in (("beta_prior", beta_prior), ("sticky", sticky),
-                                       ("min_half_width", min_half_width))
+                                       ("min_half_width", min_half_width),
+                                       ("width_near_only", width_near_only))
                      if v is not None})
         if tracker is not None:
             if first:
@@ -345,6 +346,8 @@ if __name__ == "__main__":
                    help="эксп.7: удержание структуры разрывов ширины (0 — выключено)")
     p.add_argument("--min-half-width", type=float, default=None,
                    help="эксп.7: физический предел полуширины снизу, м (0 — выключен)")
+    p.add_argument("--width-near-only", type=float, default=None,
+                   help="эксп.12: разрывы ширины разрешены только до этой глубины, м")
     p.add_argument("--deep", action="store_true",
                    help="эксп.3: продлить срезы подгонки с 42 до 62 м")
     a = p.parse_args()
@@ -352,4 +355,5 @@ if __name__ == "__main__":
              rail_roles=a.rail_roles, track=a.track, surface_tol=a.surface_tol,
              accumulate=({"accumulate": a.accumulate} if a.accumulate else None),
              deep=a.deep, beta_prior=a.beta_prior, sticky=a.sticky,
-             min_half_width=a.min_half_width)
+             min_half_width=a.min_half_width,
+             width_near_only=a.width_near_only)
