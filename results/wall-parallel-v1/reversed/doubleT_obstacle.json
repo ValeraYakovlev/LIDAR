@@ -1,0 +1,3502 @@
+{
+"bag": "doubleT_obstacle",
+"frames": 201,
+"gif_frames": 101,
+"every": 2,
+"ok": 201,
+"raw_all": 57,
+"conf_all": 55,
+"raw_gif": 29,
+"conf_gif": 28,
+"fresh_frac": 0.024875621890547265,
+"mb": 4.013176,
+"stats": [
+{
+"idx": 0,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.11111111111111,
+"wl": -6.942882216246974,
+"wr": 2.441345957084819,
+"steps": [
+[
+[
+110.0,
+-6.320687805630899
+]
+],
+[]
+],
+"ds_measured": false,
+"origin": "заново",
+"mode": "rails+walls",
+"shift": null
+},
+{
+"idx": 1,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.05001727157577,
+"wl": -6.731968223688861,
+"wr": 2.419673484831416,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 2,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.11111111111111,
+"wl": -6.8879854935791895,
+"wr": 2.387559174894836,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 3,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.07298948965877,
+"wl": -6.9218811356554095,
+"wr": 2.351441247061523,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 4,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.11111111111111,
+"wl": -6.916349894225841,
+"wr": 2.35659244044036,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 5,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.0348678682064,
+"wl": -6.930593145341012,
+"wr": 2.365332723338886,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 6,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1346153846154,
+"wl": -6.918353400890509,
+"wr": 2.3527843586147283,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 7,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.0348678682064,
+"wl": -6.931471454309238,
+"wr": 2.3802552540524347,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 8,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1346153846154,
+"wl": -6.922857122859836,
+"wr": 2.3624404705093545,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 9,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.01966868044113,
+"wl": -6.9232406792531425,
+"wr": 2.3568799791599564,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 10,
+"ok": true,
+"raw": 55.45816277152675,
+"conf": null,
+"reach": 148.1875,
+"wl": -6.9073569458474084,
+"wr": 2.3643900020269872,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 11,
+"ok": true,
+"raw": 55.58001984028637,
+"conf": null,
+"reach": 147.99604683095237,
+"wl": -6.931572821570952,
+"wr": 2.3535362441226972,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 12,
+"ok": true,
+"raw": 55.530864190247655,
+"conf": 55.530864190247655,
+"reach": 148.1875,
+"wl": -6.915383127125195,
+"wr": 2.355633179322747,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 13,
+"ok": true,
+"raw": 55.52107564042834,
+"conf": 55.52107564042834,
+"reach": 147.9337521191262,
+"wl": -6.919785404827906,
+"wr": 2.3554282077327455,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 14,
+"ok": true,
+"raw": 55.53671147931303,
+"conf": 55.53671147931303,
+"reach": 148.11384632450762,
+"wl": -6.92083076282358,
+"wr": 2.3591666405066474,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 15,
+"ok": true,
+"raw": 55.5743048085807,
+"conf": 55.5743048085807,
+"reach": 147.99371821310643,
+"wl": -6.9194785548485624,
+"wr": 2.3716167759693527,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 16,
+"ok": true,
+"raw": 55.57432026651544,
+"conf": 55.57432026651544,
+"reach": 148.01363874092314,
+"wl": -6.919116925817062,
+"wr": 2.3534026423318557,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 17,
+"ok": true,
+"raw": 55.57424102552669,
+"conf": 55.57424102552669,
+"reach": 148.00592492255527,
+"wl": -6.920350894329846,
+"wr": 2.37249451906825,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 18,
+"ok": true,
+"raw": 55.607271461183004,
+"conf": 55.607271461183004,
+"reach": 148.01363874092314,
+"wl": -6.897098923174738,
+"wr": 2.374577401454771,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 19,
+"ok": true,
+"raw": 55.64322734039403,
+"conf": 55.64322734039403,
+"reach": 148.00592492255527,
+"wl": -6.916375088913564,
+"wr": 2.371242356504205,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 20,
+"ok": true,
+"raw": 55.67569954125346,
+"conf": 55.67569954125346,
+"reach": 148.00592492255527,
+"wl": -6.935516268546728,
+"wr": 2.3654458675661485,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 21,
+"ok": true,
+"raw": 55.716048644356576,
+"conf": 55.716048644356576,
+"reach": 147.99135768099092,
+"wl": -6.920223213788716,
+"wr": 2.374650460048917,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 22,
+"ok": true,
+"raw": 55.760819000252106,
+"conf": 55.760819000252106,
+"reach": 147.99135768099092,
+"wl": -6.942758748829637,
+"wr": 2.370840597377362,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 23,
+"ok": true,
+"raw": 55.79274700254294,
+"conf": 55.79274700254294,
+"reach": 147.97222222222223,
+"wl": -6.908577653711235,
+"wr": 2.3906829144267294,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 24,
+"ok": true,
+"raw": 55.824744913423984,
+"conf": 55.824744913423984,
+"reach": 147.99135768099092,
+"wl": -6.919141349219153,
+"wr": 2.3565268504075783,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 25,
+"ok": true,
+"raw": 55.82451708496541,
+"conf": 55.82451708496541,
+"reach": 148.03630047225448,
+"wl": -6.902036285302968,
+"wr": 2.3854170219622266,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 26,
+"ok": true,
+"raw": 55.82358062373897,
+"conf": 55.82358062373897,
+"reach": 148.09375,
+"wl": -6.911377901864998,
+"wr": 2.349238732525053,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 27,
+"ok": true,
+"raw": 55.79249351587027,
+"conf": 55.79249351587027,
+"reach": 148.09375,
+"wl": -6.895071409463847,
+"wr": 2.348641610976906,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 28,
+"ok": true,
+"raw": 55.75264511517141,
+"conf": 55.75264511517141,
+"reach": 148.09375,
+"wl": -6.9178097073206954,
+"wr": 2.3464828427277533,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 29,
+"ok": true,
+"raw": 55.71681949437347,
+"conf": 55.71681949437347,
+"reach": 148.09375,
+"wl": -6.9155515467716375,
+"wr": 2.3612441889107103,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 30,
+"ok": true,
+"raw": 55.70100738426494,
+"conf": 55.70100738426494,
+"reach": 148.09375,
+"wl": -6.898526315539959,
+"wr": 2.372471598061909,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 31,
+"ok": true,
+"raw": 55.69304644264715,
+"conf": 55.69304644264715,
+"reach": 148.08939784905147,
+"wl": -6.920564269924853,
+"wr": 2.368961514382239,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 32,
+"ok": true,
+"raw": 55.68543575240914,
+"conf": 55.68543575240914,
+"reach": 148.08939784905147,
+"wl": -6.8756966567810665,
+"wr": 2.3881208297512546,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 33,
+"ok": true,
+"raw": 55.70094064349574,
+"conf": 55.70094064349574,
+"reach": 148.09370420205101,
+"wl": -6.919341165929214,
+"wr": 2.343290768729613,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 34,
+"ok": true,
+"raw": 55.7010366727922,
+"conf": 55.7010366727922,
+"reach": 148.16666666666666,
+"wl": -6.911888079580647,
+"wr": 2.367953825800217,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 35,
+"ok": true,
+"raw": 55.70935370961006,
+"conf": 55.70935370961006,
+"reach": 148.16666666666666,
+"wl": -6.9008553073622,
+"wr": 2.3777833166673763,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 36,
+"ok": true,
+"raw": 55.72124666733661,
+"conf": 55.72124666733661,
+"reach": 148.16666666666666,
+"wl": -6.881448588760353,
+"wr": 2.3651379021336636,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 37,
+"ok": true,
+"raw": 55.72941386463651,
+"conf": 55.72941386463651,
+"reach": 148.16666666666666,
+"wl": -6.889598786752502,
+"wr": 2.371934359112509,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 38,
+"ok": true,
+"raw": 55.72519080142547,
+"conf": 55.72519080142547,
+"reach": 148.16666666666666,
+"wl": -6.878744379531282,
+"wr": 2.3721947304225792,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 39,
+"ok": true,
+"raw": 55.72517857077404,
+"conf": 55.72517857077404,
+"reach": 148.16666666666666,
+"wl": -6.88789187124498,
+"wr": 2.373590647258064,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 40,
+"ok": true,
+"raw": 55.7210326516013,
+"conf": 55.7210326516013,
+"reach": 148.16666666666666,
+"wl": -6.8720434819321845,
+"wr": 2.3787138671192207,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 41,
+"ok": true,
+"raw": 55.72530990389275,
+"conf": 55.72530990389275,
+"reach": 148.16666666666666,
+"wl": -6.8798374113816605,
+"wr": 2.3838017266738767,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 42,
+"ok": true,
+"raw": 55.71706634195106,
+"conf": 55.71706634195106,
+"reach": 148.1875,
+"wl": -6.860469083922234,
+"wr": 2.373328433930045,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 43,
+"ok": true,
+"raw": 55.724850121569006,
+"conf": 55.724850121569006,
+"reach": 148.19444444444446,
+"wl": -6.913931627522392,
+"wr": 2.367709954739713,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 44,
+"ok": true,
+"raw": 55.73702910000885,
+"conf": 55.73702910000885,
+"reach": 148.1875,
+"wl": -6.885080508748219,
+"wr": 2.3960414563389585,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 45,
+"ok": true,
+"raw": 55.745284496311776,
+"conf": 55.745284496311776,
+"reach": 148.12260514044513,
+"wl": -6.881907611332677,
+"wr": 2.3792440087842666,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 46,
+"ok": true,
+"raw": 55.7693015424653,
+"conf": 55.7693015424653,
+"reach": 148.1875,
+"wl": -6.879437223608023,
+"wr": 2.3971611145227287,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 47,
+"ok": true,
+"raw": 55.80628321987502,
+"conf": 55.80628321987502,
+"reach": 148.1875,
+"wl": -6.890394549719604,
+"wr": 2.3866280616132793,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 48,
+"ok": true,
+"raw": 55.836882838745986,
+"conf": 55.836882838745986,
+"reach": 148.1875,
+"wl": -6.875886323006115,
+"wr": 2.3704814472616658,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 49,
+"ok": true,
+"raw": 55.88889942285396,
+"conf": 55.88889942285396,
+"reach": 148.1875,
+"wl": -6.8932116958753475,
+"wr": 2.3790553684314393,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 50,
+"ok": true,
+"raw": 55.93553708665584,
+"conf": 55.93553708665584,
+"reach": 148.1875,
+"wl": -6.903239541743004,
+"wr": 2.352576124063712,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 51,
+"ok": true,
+"raw": 55.98019331642558,
+"conf": 55.98019331642558,
+"reach": 148.18389974148684,
+"wl": -6.903553498670735,
+"wr": 2.36927530963354,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 52,
+"ok": true,
+"raw": 56.00667968398272,
+"conf": 56.00667968398272,
+"reach": 148.16666666666666,
+"wl": -6.889211674324712,
+"wr": 2.38169599341913,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 53,
+"ok": true,
+"raw": 56.04324719536773,
+"conf": 56.04324719536773,
+"reach": 148.16666666666666,
+"wl": -6.899296487566059,
+"wr": 2.384819930604791,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 54,
+"ok": true,
+"raw": 56.08315504534193,
+"conf": 56.08315504534193,
+"reach": 148.16666666666666,
+"wl": -6.88436302684109,
+"wr": 2.3858124247132455,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 55,
+"ok": true,
+"raw": 56.106526111981175,
+"conf": 56.106526111981175,
+"reach": 148.16666666666666,
+"wl": -6.895488847871241,
+"wr": 2.3863746781500237,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 56,
+"ok": true,
+"raw": 56.11999517640106,
+"conf": 56.11999517640106,
+"reach": 148.19117647058823,
+"wl": -6.874312527966043,
+"wr": 2.4002361617152608,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 57,
+"ok": true,
+"raw": 56.16274547299959,
+"conf": 56.16274547299959,
+"reach": 148.19444444444446,
+"wl": -6.906933622332087,
+"wr": 2.39518672838285,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 58,
+"ok": true,
+"raw": 56.15904987264152,
+"conf": 56.15904987264152,
+"reach": 148.19117647058823,
+"wl": -6.89298066416031,
+"wr": 2.377663088570375,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 59,
+"ok": true,
+"raw": 56.17507988750019,
+"conf": 56.17507988750019,
+"reach": 148.16176470588235,
+"wl": -6.903296157388988,
+"wr": 2.380085349214323,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 60,
+"ok": true,
+"raw": 56.19447844308275,
+"conf": 56.19447844308275,
+"reach": 148.20656311219687,
+"wl": -6.884184116275373,
+"wr": 2.3895218703045082,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 61,
+"ok": true,
+"raw": 56.220721822909255,
+"conf": 56.220721822909255,
+"reach": 148.16176470588235,
+"wl": -6.906786808995229,
+"wr": 2.3842251549507365,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 62,
+"ok": true,
+"raw": 56.26277947407146,
+"conf": 56.26277947407146,
+"reach": 148.16176470588235,
+"wl": -6.869206158585681,
+"wr": 2.366769424186206,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 63,
+"ok": true,
+"raw": 56.26045458320937,
+"conf": 56.26045458320937,
+"reach": 148.1383150374624,
+"wl": -6.894379291564399,
+"wr": 2.3914783168720524,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 64,
+"ok": true,
+"raw": 56.25776994178932,
+"conf": 56.25776994178932,
+"reach": 148.16666666666666,
+"wl": -6.8709972013985405,
+"wr": 2.3786345236522126,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 65,
+"ok": true,
+"raw": 56.27971355713836,
+"conf": 56.27971355713836,
+"reach": 148.1383150374624,
+"wl": -6.890034867266917,
+"wr": 2.3830369510213707,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 66,
+"ok": true,
+"raw": 56.30723768406354,
+"conf": 56.30723768406354,
+"reach": 148.16666666666666,
+"wl": -6.86947459504747,
+"wr": 2.3768812589165083,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 67,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1346153846154,
+"wl": -6.893390838167413,
+"wr": 2.36638343151992,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 68,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.17390895984823,
+"wl": -6.872056959698027,
+"wr": 2.3859407701782156,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 69,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1875,
+"wl": -6.892928125148335,
+"wr": 2.36777802307542,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 70,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19444444444446,
+"wl": -6.864130950844281,
+"wr": 2.377615749132737,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 71,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.2047223213319,
+"wl": -6.8962874426972425,
+"wr": 2.376389865986316,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 72,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.2047223213319,
+"wl": -6.892539237425054,
+"wr": 2.3659849632086534,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 73,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.2047223213319,
+"wl": -6.901502788862296,
+"wr": 2.3598786526518065,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 74,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.883052393626769,
+"wr": 2.3598065219851456,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 75,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1875,
+"wl": -6.914391043589754,
+"wr": 2.341772997493919,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 76,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.89398142040214,
+"wr": 2.355767892935615,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 77,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.02497182313743,
+"wl": -6.9077059288887375,
+"wr": 2.3811028865847166,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 78,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16176470588235,
+"wl": -6.872317009207802,
+"wr": 2.396658223123821,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 79,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1424237275715,
+"wl": -6.895916474120634,
+"wr": 2.392636250757363,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 80,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1424237275715,
+"wl": -6.884199504171637,
+"wr": 2.350623611972208,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 81,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.125,
+"wl": -6.894461951269467,
+"wr": 2.3951789137489192,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 82,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.125,
+"wl": -6.910955696169667,
+"wr": 2.3875481489521317,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 83,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.125,
+"wl": -6.90026086717848,
+"wr": 2.3703445154534855,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 84,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.125,
+"wl": -6.878591217314259,
+"wr": 2.380291897554841,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 85,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.13235294117646,
+"wl": -6.913490923582752,
+"wr": 2.3866198814741626,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 86,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.147267681605,
+"wl": -6.886306009128711,
+"wr": 2.387537705509594,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 87,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.20490829577648,
+"wl": -6.926619763699743,
+"wr": 2.392963989296014,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 88,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.20490829577648,
+"wl": -6.860926128991114,
+"wr": 2.3865740411745997,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 89,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.20490829577648,
+"wl": -6.888483732410406,
+"wr": 2.388231579245859,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 90,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.20490829577648,
+"wl": -6.868367048210589,
+"wr": 2.3719092573360974,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 91,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.20490829577648,
+"wl": -6.890867980439828,
+"wr": 2.3943295384859495,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 92,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.21088357429977,
+"wl": -6.887513024162483,
+"wr": 2.3757825668084167,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 93,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.21088357429977,
+"wl": -6.897097170183862,
+"wr": 2.377577488276432,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 94,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.21088357429977,
+"wl": -6.919677513360329,
+"wr": 2.380459300058237,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 95,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16176470588235,
+"wl": -6.902413055858763,
+"wr": 2.375927035753376,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 96,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16176470588235,
+"wl": -6.892475596098091,
+"wr": 2.3722163602083204,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 97,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.12359485682146,
+"wl": -6.894193384062607,
+"wr": 2.3798184008051897,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 98,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16176470588235,
+"wl": -6.887127864733376,
+"wr": 2.3783033495919628,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 99,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16684602417592,
+"wl": -6.914665019670113,
+"wr": 2.3863301901849754,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 100,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.22058823529412,
+"wl": -6.880138839623669,
+"wr": 2.3747183490247847,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 101,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.18481031432432,
+"wl": -6.877753802105185,
+"wr": 2.3832349524484155,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 102,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.22058823529412,
+"wl": -6.8791933775158,
+"wr": 2.3914391707054556,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 103,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.18481031432432,
+"wl": -6.900542130729908,
+"wr": 2.3736620668855806,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 104,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.25,
+"wl": -6.898612157556891,
+"wr": 2.3852681152579573,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 105,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.18481031432432,
+"wl": -6.896937141355659,
+"wr": 2.3789470797540737,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 106,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.866332853766486,
+"wr": 2.378151516772547,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 107,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.889947603307618,
+"wr": 2.393795127236648,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 108,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.902362239727584,
+"wr": 2.3765959339331375,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 109,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.910660219200376,
+"wr": 2.391570917169892,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 110,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.8987066259185745,
+"wr": 2.365848264861779,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 111,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.881873863134023,
+"wr": 2.3788647792794677,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 112,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.21875,
+"wl": -6.879778467236289,
+"wr": 2.386158464129267,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 113,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.25,
+"wl": -6.89135686346395,
+"wr": 2.3913853324562098,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 114,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.25,
+"wl": -6.887434555230787,
+"wr": 2.391398121732971,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 115,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.22619047619048,
+"wl": -6.890071282966158,
+"wr": 2.3726654057574215,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 116,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.22619047619048,
+"wl": -6.894708084771266,
+"wr": 2.385935824022872,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 117,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.225,
+"wl": -6.914506668091379,
+"wr": 2.3796640083171345,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 118,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.874068025980976,
+"wr": 2.3845500493632525,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 119,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.18333333333334,
+"wl": -6.893737155875145,
+"wr": 2.388598947621447,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 120,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.88537514980525,
+"wr": 2.3551108736885658,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 121,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.18333333333334,
+"wl": -6.888181098710326,
+"wr": 2.3910245477003165,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 122,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.895433988573824,
+"wr": 2.3731083856782047,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 123,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.881596176279746,
+"wr": 2.37640571225249,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 124,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.874819251117134,
+"wr": 2.3844485811229443,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 125,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.891137404854107,
+"wr": 2.38197245040911,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 126,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.8876808984418725,
+"wr": 2.378268422546055,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 127,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.900832326645828,
+"wr": 2.3733387808161757,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 128,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.887595097939038,
+"wr": 2.3727366465388435,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 129,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.872303036152842,
+"wr": 2.3929460663520787,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 130,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.9025999708091925,
+"wr": 2.364622919254157,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 131,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.880628327856349,
+"wr": 2.377554572627215,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 132,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.879135256644647,
+"wr": 2.4027945693342465,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 133,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.13888888888889,
+"wl": -6.89889306786799,
+"wr": 2.370921774563763,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 134,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1282011454656,
+"wl": -6.892571427791908,
+"wr": 2.3650147938066195,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 135,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1282011454656,
+"wl": -6.890686342007505,
+"wr": 2.3777950454420718,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 136,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.10294117647058,
+"wl": -6.897965486249527,
+"wr": 2.376221537559932,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 137,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.125,
+"wl": -6.903252412837875,
+"wr": 2.36858965855176,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 138,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1282011454656,
+"wl": -6.8769217699686855,
+"wr": 2.358704003767485,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 139,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.125,
+"wl": -6.902462621175451,
+"wr": 2.3772436548210822,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 140,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.125,
+"wl": -6.872227044344659,
+"wr": 2.377510958520747,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 141,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.125,
+"wl": -6.88403028751456,
+"wr": 2.369833476452933,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 142,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.10294117647058,
+"wl": -6.894623059229638,
+"wr": 2.3719189658119118,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 143,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.10294117647058,
+"wl": -6.891033230680841,
+"wr": 2.3622960076009165,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 144,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.888156372220527,
+"wr": 2.386406228364601,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 145,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.17105263157896,
+"wl": -6.86729859809037,
+"wr": 2.397515497283906,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 146,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.17105263157896,
+"wl": -6.877935996270889,
+"wr": 2.392837580190301,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 147,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19444444444446,
+"wl": -6.866302313806441,
+"wr": 2.3785060889226166,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 148,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.2,
+"wl": -6.884050600019651,
+"wr": 2.3657271510638513,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 149,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19444444444446,
+"wl": -6.8851949920972615,
+"wr": 2.3724841912727763,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 150,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19444444444446,
+"wl": -6.870844838901962,
+"wr": 2.3804459811275054,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 151,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19444444444446,
+"wl": -6.93038374772455,
+"wr": 2.4390252390407223,
+"steps": [
+[
+[
+110.0,
+-6.382304668850519
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "заново",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 152,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19444444444446,
+"wl": -6.945995218770108,
+"wr": 2.4388156556666547,
+"steps": [
+[
+[
+110.0,
+-6.394480506427494
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 153,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19444444444446,
+"wl": -6.928309649827881,
+"wr": 2.441771783630936,
+"steps": [
+[
+[
+110.0,
+-6.335326129375913
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 154,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19444444444446,
+"wl": -6.954945001337315,
+"wr": 2.433530817339299,
+"steps": [
+[
+[
+110.0,
+-6.41341478183275
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 155,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19444444444446,
+"wl": -6.936942394897258,
+"wr": 2.4445881163424716,
+"steps": [
+[
+[
+110.0,
+-6.423309544632456
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 156,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19444444444446,
+"wl": -6.9493764135153,
+"wr": 2.423024636609127,
+"steps": [
+[
+[
+110.0,
+-6.449038844294867
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 157,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.926136656833636,
+"wr": 2.441188478341712,
+"steps": [
+[
+[
+110.0,
+-6.318789438476339
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 158,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.960423335430064,
+"wr": 2.4533771337396493,
+"steps": [
+[
+[
+110.0,
+-6.411373832138536
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 159,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.19117647058823,
+"wl": -6.717908306403329,
+"wr": 2.422655345181788,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 160,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15,
+"wl": -6.977305445568293,
+"wr": 2.441878192683058,
+"steps": [
+[
+[
+100.0,
+-6.430708930061083
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "заново",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 161,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15,
+"wl": -6.726097984670554,
+"wr": 2.4264251751091668,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 162,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15,
+"wl": -6.964348760362492,
+"wr": 2.4417130735856416,
+"steps": [
+[
+[
+110.0,
+-6.395582228243308
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "заново",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 163,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15,
+"wl": -6.9285811044733645,
+"wr": 2.425517676226377,
+"steps": [
+[
+[
+110.0,
+-6.36436543380711
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 164,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16176470588235,
+"wl": -6.941940015078043,
+"wr": 2.4391364641690845,
+"steps": [
+[
+[
+110.0,
+-6.434724279216429
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 165,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.698273287752141,
+"wr": 2.4337293716688095,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 166,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1875,
+"wl": -6.883816341897231,
+"wr": 2.367505506365572,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 167,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.20795028400536,
+"wl": -6.960803192705408,
+"wr": 2.4343366670746787,
+"steps": [
+[
+[
+110.0,
+-6.370441060690019
+]
+],
+[]
+],
+"ds_measured": 1.0,
+"origin": "заново",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 168,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.20795028400536,
+"wl": -6.69137992475904,
+"wr": 2.4417977220844884,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 169,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.20795028400536,
+"wl": -6.897846560998605,
+"wr": 2.387785344191698,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 170,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.21875,
+"wl": -6.889221995828941,
+"wr": 2.37698172535621,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 171,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.20795028400536,
+"wl": -6.919215099375332,
+"wr": 2.371853337769166,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 172,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.21875,
+"wl": -6.908897502628947,
+"wr": 2.372288290266364,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 173,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.09375,
+"wl": -6.92333809118279,
+"wr": 2.4119642272001887,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 174,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.20454545454547,
+"wl": -6.9107827357348475,
+"wr": 2.4201947475273142,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 175,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1,
+"wl": -6.901959346430291,
+"wr": 2.4176933658298783,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 176,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15,
+"wl": -6.904285822278126,
+"wr": 2.3809462643176573,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 177,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15,
+"wl": -6.893886093655068,
+"wr": 2.3660784409339715,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 178,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15,
+"wl": -6.896729900228469,
+"wr": 2.39325010071975,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 179,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15,
+"wl": -6.870853200617942,
+"wr": 2.3779055738106964,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 180,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15,
+"wl": -6.909922102786809,
+"wr": 2.351996310315021,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 181,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.910631778731359,
+"wr": 2.376370075919785,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 182,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.14285714285714,
+"wl": -6.9070991315882795,
+"wr": 2.3817204904298324,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 183,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.9095237329045665,
+"wr": 2.3699502392252327,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 184,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.884233257162508,
+"wr": 2.3888171588337763,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 185,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.880469383793539,
+"wr": 2.383925692381294,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 186,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.902157644190124,
+"wr": 2.3896434499462136,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 187,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.17105263157896,
+"wl": -6.897074850187913,
+"wr": 2.3706353626370746,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 188,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.17105263157896,
+"wl": -6.902773638254316,
+"wr": 2.3822232150377003,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 189,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1416497630189,
+"wl": -6.886419144402078,
+"wr": 2.378409696341643,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 190,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.1416497630189,
+"wl": -6.8799429245854355,
+"wr": 2.3920819791957117,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 191,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.905481229103984,
+"wr": 2.3723305486329846,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 192,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.13235294117646,
+"wl": -6.8970437434325005,
+"wr": 2.374083070464486,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 193,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.885579270860663,
+"wr": 2.3910755524614133,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 194,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.894465741752874,
+"wr": 2.365168672201582,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 195,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.90641014111926,
+"wr": 2.3887256801698267,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 196,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.912466984362319,
+"wr": 2.3659118919083832,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 197,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.16666666666666,
+"wl": -6.903011037352342,
+"wr": 2.372167937812784,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 198,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.884998047412375,
+"wr": 2.368363257906262,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 199,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.892819378473252,
+"wr": 2.3802371646150107,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+},
+{
+"idx": 200,
+"ok": true,
+"raw": null,
+"conf": null,
+"reach": 148.15625,
+"wl": -6.896787503722971,
+"wr": 2.372017386665252,
+"steps": [
+[],
+[]
+],
+"ds_measured": 1.0,
+"origin": "память",
+"mode": "rails+walls",
+"shift": 0.0
+}
+]
+}

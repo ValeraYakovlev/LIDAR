@@ -44,6 +44,12 @@ Bag'и (см. [knowledge.md §3](knowledge.md)):
 `ring: uint16`, `timestamp: float64`. Глубина вдоль тоннеля — это `-y` (ось Y
 сенсора направлена назад). Подробности координат — [knowledge.md §4-5](knowledge.md).
 
+**Зеркальные копии** всех шести записей — `/Volumes/T7/reversed/` (та же
+структура, отражение по оси Y: x → −x, остальное побайтно то же; делает
+`mirror_dataset.py`, описание и контрольные суммы — `README.md` там же). Это
+«новые» прогоны для проверки метода на асимметрию и хрупкие решения (§32);
+любой скрипт работает с ними через `--dataset /Volumes/T7/reversed`.
+
 ## Структура репозитория
 
 ```
@@ -70,6 +76,11 @@ make_parallel_gifs.py   — GIF эксперимента 17 (§31): путь и 
 exp_parallel_cache.py   — эксп.17: кэш покадровых измерений (контраст, рельсы, Δs, база §28)
 exp_parallel_dev.py     — эксп.17: замер на кэше — дрожание стен, «стена в коридоре», рельсы
 exp_parallel_box.py     — эксп.17: точки в коробке габарита, скачки стен, рельсы — база против новой
+mirror_dataset.py       — зеркальные копии записей (x -> -x) в /Volumes/T7/reversed, со сверкой (§32)
+eval_mirror.py          — зеркальная проверка: ответ на отражённых записях против отражённого исходного (§32)
+exp_memory_bend.py      — память против «заново» на 75 м: замер ошибки, найденной на GIF (§32)
+results/wall-parallel-v1/ — эталон §31-§32: покадровые выходы на исходных и зеркальных записях,
+                          сводки, контрольные суммы GIF и записей; где лежат сами GIF — README там же
 plot_cross_sections.py  — срезы ПЕРПЕНДИКУЛЯРНО Y (профиль пола Z(X)) с причиной отказа детектора рельсов
 curved_slicing.py       — эксперимент со срезами по кривой (см. knowledge.md)
 wall_method_comparison.py — сравнение методов детекции стен (устарело)
@@ -203,7 +214,7 @@ validation_run_v6.json  — roundT_squareT_pressureGate_squareT ЦЕЛИКОМ, 
 | `feature/prev-frame-mask` | предок ветки ниже | §18: детектор рельсов по колее, отсечение по стенам прошлого кадра, срезы перпендикулярно Y |
 | `feature/clutter-and-accumulation` | **активная разработка** | §19-§22: эксперименты 2, 3, 6, 7. Накопление кадров со сдвигом на Δs и курс от рельсов (результаты), интенсивность и ширина (отрицательные) |
 | `feature/topdown-floor-ceiling` | эксперимент 14 | §26: `views.py`, `eval_views.py`, `make_view_gifs.py` — три взгляда на вид сверху |
-| `feature/wall-parallel-path` | **активная разработка** | §31: путь и стены одной кривой (`parallel_path.py`), GIF в `output/Opus 5.5`; ветвь от `feature/path-continuity` |
+| `feature/wall-parallel-path` | **активная разработка** | §31-§32: путь и стены одной кривой (`parallel_path.py`), зеркальная проверка; тег `wall-parallel-v1` — эталон, результаты в `results/wall-parallel-v1`; ветвь от `feature/path-continuity` |
 | `feature/path-continuity` | предок ветки выше | §28: путь как состояние (медиана по окну), `eval_path.py`; ветвь от `feature/contrast-gauge` |
 | `feature/contrast-gauge` | предок ветки выше | §27: `contrast_gauge.py`, `make_gauge_gifs.py` — габарит на пути из контраста; ветвь от `feature/topdown-floor-ceiling` |
 | `feature/walls-and-turns` | смержена в main (предок) | самая ранняя работа: детекция желоба/рельс, кривизна пути, классификация поворотов |
@@ -246,6 +257,13 @@ python exp_shift_probe.py --stride 1        # Δs двумя способами,
 python exp_accumulate_probe.py              # плотность и размазывание при N=1,3,5,10
 python exp_obstacle_check.py                # выживает ли препятствие после накопления
 python exp_clutter_probe.py                 # интенсивность и непрерывность: стена vs начинка
+
+# зеркальная проверка (§32): те же записи, отражённые по оси Y
+python mirror_dataset.py                    # один раз: /Volumes/T7/reversed
+python make_parallel_gifs.py --dataset /Volumes/T7/reversed --out "output/Opus 5.5/reversed"
+python eval_mirror.py --orig "output/Opus 5.5" --mirror "output/Opus 5.5/reversed"
+python eval_mirror.py --orig results/wall-parallel-v1/original --mirror results/wall-parallel-v1/reversed  # эталон
+python exp_memory_bend.py                   # память против «заново» на 75 м
 ```
 
 Все команды принимают `--dataset /path/to/Dataset`, по умолчанию
@@ -262,3 +280,8 @@ python exp_clutter_probe.py                 # интенсивность и не
   разработкой и проверкой.
 - Метрика привязана к точкам (`coverage`/`leak`), не к гладкости подгонки —
   гладкая кривая через неверные точки всё равно "гладкая".
+- **Любое заявленное улучшение проходит зеркальную проверку** (§32): тот же
+  метод на `/Volumes/T7/reversed` обязан дать отражённый ответ — находки кадр в
+  кадр, стены с точностью до миллиметров по медиане, каждый эпизод расхождения
+  объяснён (`eval_mirror.py`). Расхождение указывает на решение на грани порога
+  — такое место отсматривается на GIF.

@@ -1,0 +1,67 @@
+[
+ {
+  "bag": "doubleT_platform",
+  "pairs": 344,
+  "curve_pairs": 237,
+  "divergent": 12,
+  "divergent_memory_chosen": 11,
+  "fit_memory": 0.3828928672423472,
+  "fit_fresh": 0.42491987082340027,
+  "curve_diff": {
+   "p10": -0.0677421786609491,
+   "median": -0.005824230775133912,
+   "p90": 0.13521902717093748
+  }
+ },
+ {
+  "bag": "roundT_doubleT",
+  "pairs": 251,
+  "curve_pairs": 134,
+  "divergent": 22,
+  "divergent_memory_chosen": 20,
+  "fit_memory": 0.38498067162552796,
+  "fit_fresh": 0.3383716743538803,
+  "curve_diff": {
+   "p10": -0.16072535970712945,
+   "median": 0.011508897128489893,
+   "p90": 0.1741392329763776
+  }
+ },
+ {
+  "bag": "roundT_pressureGate_roundT",
+  "pairs": 267,
+  "curve_pairs": 202,
+  "divergent": 21,
+  "divergent_memory_chosen": 21,
+  "fit_memory": 0.15324974933395,
+  "fit_fresh": 0.11719431357692425,
+  "curve_diff": {
+   "p10": -0.02176954304554633,
+   "median": -0.0010395339611621965,
+   "p90": 0.036588861717223996
+  }
+ },
+ {
+  "bag": "squareT_platform_squareT_switch",
+  "pairs": 876,
+  "curve_pairs": 43,
+  "divergent": 46,
+  "divergent_memory_chosen": 45,
+  "fit_memory": 0.46867272745789057,
+  "fit_fresh": 0.38679741424048053,
+  "curve_diff": {
+   "p10": -0.05716568298603682,
+   "median": -0.004430054931995159,
+   "p90": 0.09448577785787675
+  }
+ },
+ {
+  "bag": "doubleT_obstacle",
+  "pairs": 200,
+  "curve_pairs": 0,
+  "divergent": 0,
+  "divergent_memory_chosen": 0,
+  "fit_memory": null,
+  "fit_fresh": null
+ }
+]
