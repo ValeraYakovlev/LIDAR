@@ -1,0 +1,641 @@
+{
+ "doubleT_platform": {
+  "orig": {
+   "frames": 345,
+   "geometry": 345,
+   "raw": [],
+   "confirmed": [],
+   "wall_jumps": 4,
+   "reach_median": 144.07254542296727
+  },
+  "mirror": {
+   "frames": 345,
+   "geometry": 345,
+   "raw": [],
+   "confirmed": [],
+   "wall_jumps": 2,
+   "reach_median": 143.8394082407333
+  },
+  "symmetry": {
+   "frames_compared": 345,
+   "wall_mismatch_median": [
+    0.005576919375964273,
+    0.00909796384514916
+   ],
+   "wall_mismatch_p90": 0.15839093006759755,
+   "wall_mismatch_max": 5.075919811974227,
+   "divergent_frames": 24,
+   "episodes": [
+    {
+     "frames": [
+      32,
+      54
+     ],
+     "since": 32,
+     "max_mismatch": 5.075919811974227,
+     "start_choice_differs": [
+      32
+     ],
+     "steps_differ": [
+      32
+     ]
+    },
+    {
+     "frames": [
+      130,
+      130
+     ],
+     "since": 123,
+     "max_mismatch": 0.35590449252836454,
+     "start_choice_differs": [],
+     "steps_differ": []
+    }
+   ],
+   "detection_differs_frames": []
+  }
+ },
+ "roundT_doubleT": {
+  "orig": {
+   "frames": 252,
+   "geometry": 252,
+   "raw": [
+    97,
+    98
+   ],
+   "confirmed": [],
+   "wall_jumps": 2,
+   "reach_median": 139.2287598602033
+  },
+  "mirror": {
+   "frames": 252,
+   "geometry": 252,
+   "raw": [
+    97,
+    98,
+    100,
+    101,
+    102,
+    103
+   ],
+   "confirmed": [
+    102,
+    103
+   ],
+   "wall_jumps": 2,
+   "reach_median": 139.22805598444444
+  },
+  "symmetry": {
+   "frames_compared": 252,
+   "wall_mismatch_median": [
+    0.003947731920732389,
+    0.005049541299753768
+   ],
+   "wall_mismatch_p90": 0.264159062932959,
+   "wall_mismatch_max": 4.7554032212688675,
+   "divergent_frames": 25,
+   "episodes": [
+    {
+     "frames": [
+      101,
+      117
+     ],
+     "since": 99,
+     "max_mismatch": 1.2863628758910113,
+     "start_choice_differs": [
+      99
+     ],
+     "steps_differ": []
+    },
+    {
+     "frames": [
+      119,
+      124
+     ],
+     "since": 99,
+     "max_mismatch": 0.6693774577214135,
+     "start_choice_differs": [
+      99,
+      112,
+      113
+     ],
+     "steps_differ": [
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119
+     ]
+    },
+    {
+     "frames": [
+      130,
+      131
+     ],
+     "since": 130,
+     "max_mismatch": 4.7554032212688675,
+     "start_choice_differs": [
+      130
+     ],
+     "steps_differ": [
+      130
+     ]
+    }
+   ],
+   "detection_differs_frames": [
+    100,
+    101,
+    102,
+    103
+   ]
+  }
+ },
+ "roundT_pressureGate_roundT": {
+  "orig": {
+   "frames": 268,
+   "geometry": 268,
+   "raw": [],
+   "confirmed": [],
+   "wall_jumps": 0,
+   "reach_median": 141.33941449469296
+  },
+  "mirror": {
+   "frames": 268,
+   "geometry": 268,
+   "raw": [],
+   "confirmed": [],
+   "wall_jumps": 0,
+   "reach_median": 141.40253082594035
+  },
+  "symmetry": {
+   "frames_compared": 268,
+   "wall_mismatch_median": [
+    0.003007319038540013,
+    0.0023549844015773314
+   ],
+   "wall_mismatch_p90": 0.009079168641049944,
+   "wall_mismatch_max": 0.03713450670120233,
+   "divergent_frames": 0,
+   "episodes": [],
+   "detection_differs_frames": []
+  }
+ },
+ "roundT_squareT_pressureGate_squareT": {
+  "orig": {
+   "frames": 545,
+   "geometry": 545,
+   "raw": [],
+   "confirmed": [],
+   "wall_jumps": 0,
+   "reach_median": 142.1177714111977
+  },
+  "mirror": {
+   "frames": 545,
+   "geometry": 545,
+   "raw": [],
+   "confirmed": [],
+   "wall_jumps": 0,
+   "reach_median": 141.69764490021726
+  },
+  "symmetry": {
+   "frames_compared": 545,
+   "wall_mismatch_median": [
+    0.0030381335781877183,
+    0.0046660550885477825
+   ],
+   "wall_mismatch_p90": 0.016856786044905994,
+   "wall_mismatch_max": 0.6965908536505339,
+   "divergent_frames": 3,
+   "episodes": [
+    {
+     "frames": [
+      151,
+      153
+     ],
+     "since": 150,
+     "max_mismatch": 0.6965908536505339,
+     "start_choice_differs": [],
+     "steps_differ": [
+      151
+     ]
+    }
+   ],
+   "detection_differs_frames": []
+  }
+ },
+ "squareT_platform_squareT_switch": {
+  "orig": {
+   "frames": 877,
+   "geometry": 877,
+   "raw": [],
+   "confirmed": [],
+   "wall_jumps": 2,
+   "reach_median": 147.98755916420694
+  },
+  "mirror": {
+   "frames": 877,
+   "geometry": 877,
+   "raw": [],
+   "confirmed": [],
+   "wall_jumps": 2,
+   "reach_median": 147.98755916420694
+  },
+  "symmetry": {
+   "frames_compared": 877,
+   "wall_mismatch_median": [
+    0.024690732445192598,
+    0.004366513193235999
+   ],
+   "wall_mismatch_p90": 0.07308328836412663,
+   "wall_mismatch_max": 0.6917328113089014,
+   "divergent_frames": 24,
+   "episodes": [
+    {
+     "frames": [
+      70,
+      70
+     ],
+     "since": 68,
+     "max_mismatch": 0.3273450780792282,
+     "start_choice_differs": [
+      68
+     ],
+     "steps_differ": [
+      68,
+      69,
+      70
+     ]
+    },
+    {
+     "frames": [
+      74,
+      75
+     ],
+     "since": 68,
+     "max_mismatch": 0.3291130787130725,
+     "start_choice_differs": [
+      68
+     ],
+     "steps_differ": [
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74
+     ]
+    },
+    {
+     "frames": [
+      78,
+      86
+     ],
+     "since": 68,
+     "max_mismatch": 0.5191176340983765,
+     "start_choice_differs": [
+      68
+     ],
+     "steps_differ": [
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78
+     ]
+    },
+    {
+     "frames": [
+      92,
+      93
+     ],
+     "since": 68,
+     "max_mismatch": 0.5492282097956056,
+     "start_choice_differs": [
+      68,
+      82,
+      83
+     ],
+     "steps_differ": [
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92
+     ]
+    },
+    {
+     "frames": [
+      679,
+      688
+     ],
+     "since": 675,
+     "max_mismatch": 0.6917328113089014,
+     "start_choice_differs": [],
+     "steps_differ": [
+      679
+     ]
+    }
+   ],
+   "detection_differs_frames": []
+  }
+ },
+ "doubleT_obstacle": {
+  "orig": {
+   "frames": 201,
+   "geometry": 201,
+   "raw": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66
+   ],
+   "confirmed": [
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66
+   ],
+   "wall_jumps": 0,
+   "reach_median": 148.16666666666666,
+   "person": {
+    "frames": 72,
+    "found": 57,
+    "confirmed": 55,
+    "outside": 0
+   }
+  },
+  "mirror": {
+   "frames": 201,
+   "geometry": 201,
+   "raw": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66
+   ],
+   "confirmed": [
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66
+   ],
+   "wall_jumps": 0,
+   "reach_median": 148.16666666666666,
+   "person": {
+    "frames": 72,
+    "found": 57,
+    "confirmed": 55,
+    "outside": 0
+   }
+  },
+  "symmetry": {
+   "frames_compared": 201,
+   "wall_mismatch_median": [
+    0.003430519180484204,
+    0.003555317214506193
+   ],
+   "wall_mismatch_p90": 0.055213570829659275,
+   "wall_mismatch_max": 0.24587482540664585,
+   "divergent_frames": 0,
+   "episodes": [],
+   "detection_differs_frames": []
+  }
+ }
+}

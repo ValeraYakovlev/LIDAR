@@ -2,3 +2,5 @@ rosbags
 numpy
 scipy
 matplotlib
+scikit-learn
+pillow

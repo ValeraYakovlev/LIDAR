@@ -1,0 +1,547 @@
+{
+ "purpose": "ЗАМОРОЖЕННЫЙ прогон для СЛЕДУЮЩЕГО круга по габаритному коридору (эксп. 13)",
+ "bag": "roundT_pressureGate_roundT",
+ "n_used": 134,
+ "stride": 2,
+ "why_this_run": "ни разу не был отложенным; по ложным срабатываниям габарита он второй по трудности после двухпутного (9% при w=0.90/30 м)",
+ "caveat": "в §24 этот прогон УЧАСТВОВАЛ в замере: размеры коробки снимались с карты занятости по всем пяти чистым прогонам сразу, иначе их неоткуда взять. Поэтому цифры §24 по нему НЕ слепые. Замораживается он начиная с этого момента: пороги детектора (ширина, предел глубины, размер скопления, число кадров подтверждения) на нём больше не подбираются",
+ "frozen_before": "любой настройки порогов детектора препятствий",
+ "test_set": [
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 0
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 2
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 4
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 6
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 8
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 10
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 12
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 14
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 16
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 18
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 20
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 22
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 24
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 26
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 28
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 30
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 32
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 34
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 36
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 38
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 40
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 42
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 44
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 46
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 48
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 50
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 52
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 54
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 56
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 58
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 60
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 62
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 64
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 66
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 68
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 70
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 72
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 74
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 76
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 78
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 80
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 82
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 84
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 86
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 88
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 90
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 92
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 94
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 96
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 98
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 100
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 102
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 104
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 106
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 108
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 110
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 112
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 114
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 116
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 118
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 120
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 122
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 124
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 126
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 128
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 130
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 132
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 134
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 136
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 138
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 140
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 142
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 144
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 146
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 148
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 150
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 152
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 154
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 156
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 158
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 160
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 162
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 164
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 166
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 168
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 170
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 172
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 174
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 176
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 178
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 180
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 182
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 184
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 186
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 188
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 190
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 192
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 194
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 196
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 198
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 200
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 202
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 204
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 206
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 208
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 210
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 212
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 214
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 216
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 218
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 220
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 222
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 224
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 226
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 228
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 230
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 232
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 234
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 236
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 238
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 240
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 242
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 244
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 246
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 248
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 250
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 252
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 254
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 256
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 258
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 260
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 262
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 264
+  },
+  {
+   "bag": "roundT_pressureGate_roundT",
+   "frame": 266
+  }
+ ]
+}

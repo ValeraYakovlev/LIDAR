@@ -21,6 +21,26 @@ DEFAULT_BAGS = [
 ]
 
 
+LIDAR_TOPIC = "/lidar_points"
+
+
+def _lidar_connections(reader):
+    """Соединения с облаком лидара.
+
+    В исходных записях топик один. В синтетических (/Volumes/T7/synthetic_data)
+    рядом лежат /lidar_points_labeled — то же облако с классом каждой точки, то
+    есть готовый ответ, который алгоритм видеть не должен, — и /tf, /tf_static.
+    Берётся /lidar_points; если его нет — первый топик PointCloud2.
+    """
+    conns = [c for c in reader.connections if c.topic == LIDAR_TOPIC]
+    if not conns:
+        conns = [c for c in reader.connections
+                 if c.msgtype == "sensor_msgs/msg/PointCloud2"][:1]
+    if not conns:
+        raise RuntimeError("в записи нет облака точек (PointCloud2)")
+    return conns
+
+
 def bag_path(dataset_root, bag_name):
     return Path(dataset_root) / bag_name
 
@@ -33,7 +53,7 @@ def load_frame(bag_dir, frame_idx=None):
     """
     bag_dir = Path(bag_dir)
     with AnyReader([bag_dir]) as reader:
-        conns = reader.connections
+        conns = _lidar_connections(reader)
         n = conns[0].msgcount
         target = n // 2 if frame_idx is None else frame_idx
         for i, (conn, ts, rawdata) in enumerate(reader.messages(connections=conns)):
@@ -48,7 +68,7 @@ def frame_count(bag_dir):
     """Число кадров в bag без чтения самих сообщений (берётся из индекса
     sqlite) — нужно, чтобы выбрать шаг прохода до начала чтения."""
     with AnyReader([Path(bag_dir)]) as reader:
-        return reader.connections[0].msgcount
+        return _lidar_connections(reader)[0].msgcount
 
 
 def iter_selected_frames(bag_dir, frame_indices):
@@ -66,7 +86,7 @@ def iter_selected_frames(bag_dir, frame_indices):
     want_set = set(want)
     bag_dir = Path(bag_dir)
     with AnyReader([bag_dir]) as reader:
-        conns = reader.connections
+        conns = _lidar_connections(reader)
         for i, (conn, ts, rawdata) in enumerate(reader.messages(connections=conns)):
             if i in want_set:
                 msg = reader.deserialize(rawdata, conn.msgtype)
@@ -87,7 +107,7 @@ def iter_frames(bag_dir, stride=1, max_frames=None):
     bag_dir = Path(bag_dir)
     yielded = 0
     with AnyReader([bag_dir]) as reader:
-        conns = reader.connections
+        conns = _lidar_connections(reader)
         n = conns[0].msgcount
         for i, (conn, ts, rawdata) in enumerate(reader.messages(connections=conns)):
             if i % stride != 0:

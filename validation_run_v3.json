@@ -1,0 +1,708 @@
+{
+ "purpose": "ЗАМОРОЖЕННЫЙ валидационный ПРОГОН для экспериментов 2 (интенсивность и непрерывность) и 3 (накопление кадров)",
+ "bag": "doubleT_platform",
+ "n_frames_total": 345,
+ "stride": 2,
+ "n_used": 173,
+ "why_this_run": "самый трудный прогон по текущей метрике §18: 83.8% против 97.8% на разработочных. Станция: боковая граница меняется не ступенькой, а сложнее — платформа, за ней проём, за ним стена",
+ "caveat": "прогон участвовал в разработке §16-§18, поэтому девственным не является. Для решений ЭТОГО эксперимента он отложен: замер на нём делается ОДИН раз, после того как все решения приняты по dev_runs_v2.json",
+ "baseline_before": {
+  "both_walls_pct": 83.8,
+  "source": "knowledge.md §18, коммит 8f1bd89"
+ },
+ "frozen_before": "любых изменений алгоритма в ветке feature/clutter-and-accumulation",
+ "test_set": [
+  {
+   "bag": "doubleT_platform",
+   "frame": 0
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 2
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 4
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 6
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 8
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 10
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 12
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 14
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 16
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 18
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 20
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 22
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 24
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 26
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 28
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 30
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 32
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 34
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 36
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 38
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 40
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 42
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 44
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 46
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 48
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 50
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 52
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 54
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 56
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 58
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 60
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 62
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 64
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 66
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 68
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 70
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 72
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 74
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 76
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 78
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 80
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 82
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 84
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 86
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 88
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 90
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 92
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 94
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 96
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 98
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 100
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 102
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 104
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 106
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 108
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 110
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 112
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 114
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 116
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 118
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 120
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 122
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 124
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 126
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 128
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 130
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 132
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 134
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 136
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 138
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 140
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 142
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 144
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 146
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 148
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 150
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 152
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 154
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 156
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 158
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 160
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 162
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 164
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 166
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 168
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 170
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 172
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 174
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 176
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 178
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 180
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 182
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 184
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 186
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 188
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 190
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 192
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 194
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 196
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 198
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 200
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 202
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 204
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 206
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 208
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 210
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 212
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 214
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 216
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 218
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 220
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 222
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 224
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 226
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 228
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 230
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 232
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 234
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 236
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 238
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 240
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 242
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 244
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 246
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 248
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 250
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 252
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 254
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 256
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 258
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 260
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 262
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 264
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 266
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 268
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 270
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 272
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 274
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 276
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 278
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 280
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 282
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 284
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 286
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 288
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 290
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 292
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 294
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 296
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 298
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 300
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 302
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 304
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 306
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 308
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 310
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 312
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 314
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 316
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 318
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 320
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 322
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 324
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 326
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 328
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 330
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 332
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 334
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 336
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 338
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 340
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 342
+  },
+  {
+   "bag": "doubleT_platform",
+   "frame": 344
+  }
+ ]
+}
