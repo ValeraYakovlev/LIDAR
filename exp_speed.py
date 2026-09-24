@@ -7,6 +7,7 @@
     python exp_speed.py golden --dataset /Volumes/T7/Dataset --bags doubleT_platform ...
     python exp_speed.py check  --dataset /Volumes/T7/Dataset --bags doubleT_platform ...
     python exp_speed.py bench  --label ref
+    python exp_speed.py plot   --label ref,seq,par --names "до,шаги 1–4,параллельно"
 
 golden — покадровые выходы всего конвейера (путь §31 + детектор §34, варианты
          final и final_b2) в output/exp19_golden/<набор>/<запись>.npz;
@@ -164,7 +165,9 @@ def compare(ref, new):
 
 
 def _job(args):
-    mode, dataset, bag, max_frames = args
+    mode, dataset, bag, max_frames, workers = args
+    from rail_detection import parallel as par
+    par.set_workers(workers)
     tag = Path(dataset).name
     t0 = time.time()
     rows = run_bag(dataset, bag, max_frames)
@@ -177,7 +180,7 @@ def _job(args):
     if max_frames is not None:
         ref = ref[:len(rows)]
     # сравнение через ту же запись/чтение, что и эталон: одинаковые типы
-    tmp = Path("/tmp") / f"exp19_check_{tag}_{bag}"
+    tmp = Path("/tmp") / f"exp19_check_{tag}_{bag}_w{workers}"
     save(rows, tmp)
     diff = compare(ref, load(tmp))
     if diff is None:
@@ -208,11 +211,16 @@ def _instrument(log):
 
     from rail_detection import far_detect, parallel_path
 
+    import threading
+
     depth = [0]
+    main = threading.main_thread()
 
     def wrap(fn, name):
         def inner(*a, **kw):
-            if depth[0]:
+            # только основной поток и только верхний уровень: при распараллеливании
+            # куски и задачи пула в учёт стадий не идут (их время — в ожидании)
+            if depth[0] or threading.current_thread() is not main:
                 return fn(*a, **kw)
             depth[0] += 1
             t = time.perf_counter()
@@ -226,13 +234,18 @@ def _instrument(log):
     for mod, fn, name in STAGES:
         m = importlib.import_module(f"rail_detection.{mod}")
         setattr(m, fn, wrap(getattr(m, fn), name))
+    from rail_detection import parallel
+    parallel.chunked = wrap(parallel.chunked, "по точкам кусками")
+    parallel.submit = wrap(parallel.submit, "постановка в пул")
     cls = parallel_path.WallParallelTracker
     cls.step = wrap(cls.step, "трекер пути")
     far_detect.FarDetector.update = wrap(far_detect.FarDetector.update, "детектор 18")
 
 
-def bench(label, bags, n_frames):
+def bench(label, bags, n_frames, workers=1):
     from rail_detection import bag_path, iter_frames
+    from rail_detection import parallel as par
+    par.set_workers(workers)
     from rail_detection import far_detect as fd
     from rail_detection.parallel_path import ParallelGauge
 
@@ -242,7 +255,7 @@ def bench(label, bags, n_frames):
     import subprocess
     cpu = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True,
                          text=True).stdout.strip() or platform.processor()
-    out = {"label": label, "cpu": cpu, "bags": {}}
+    out = {"label": label, "cpu": cpu, "workers": workers, "bags": {}}
     for dataset, bag in bags:
         frames = [p.copy() for _, p, _ in iter_frames(bag_path(dataset, bag), max_frames=n_frames)]
         pg = ParallelGauge()
@@ -259,7 +272,8 @@ def bench(label, bags, n_frames):
         out["bags"][bag] = per
         print(f"  {bag}: {len(per)} кадров, медиана {np.median(tot):.0f} мс, "
               f"p95 {np.percentile(tot, 95):.0f}, макс {tot.max():.0f}")
-        names = [n for _, _, n in STAGES] + ["трекер пути", "детектор 18"]
+        names = [n for _, _, n in STAGES] + ["трекер пути", "детектор 18",
+                                             "по точкам кусками"]
         for n in names:
             v = np.array([r.get(n, 0.0) for r in per]) * 1000
             print(f"      {n:22s} {np.median(v):6.1f} мс")
@@ -287,9 +301,51 @@ DEV = ([("/Volumes/T7/Dataset", b) for b in
           ("box", "human_smashed", "human_smashed_diff_tunnels")])
 
 
+def plot(labels, names, out):
+    """Boxplot времени кадра: по записи — ящик на каждый замер."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    runs = [json.load(open(f"results/exp19/bench_{lb}.json")) for lb in labels]
+    bags = list(runs[0]["bags"])
+    titles = {"doubleT_obstacle": "doubleT_obstacle\n(921 тыс. точек в кадре)",
+              "squareT_platform_squareT_switch": "squareT_platform_squareT_switch\n(307 тыс.)",
+              "human_smashed": "human_smashed, синтетика\n(307 тыс.)"}
+    colors = ["#adb5bd", "#74c0fc", "#40c057", "#f59f00"]
+    fig, axs = plt.subplots(1, len(bags), figsize=(4.2 * len(bags), 5.2), sharey=True)
+    for ax, bag in zip(np.atleast_1d(axs), bags):
+        data = [np.array([r["total"] for r in run["bags"][bag]]) * 1000 for run in runs]
+        bp = ax.boxplot(data, widths=0.6, patch_artist=True, showfliers=True,
+                        medianprops={"color": "black", "lw": 1.6},
+                        flierprops={"marker": ".", "ms": 3, "alpha": 0.5})
+        for patch, c in zip(bp["boxes"], colors):
+            patch.set_facecolor(c)
+        for i, d in enumerate(data, 1):
+            ax.text(i + 0.34, np.median(d), f"{np.median(d):.0f} мс", va="center", fontsize=9,
+                    fontweight="bold")
+        ax.axhline(100, color="#e03131", ls="--", lw=1.2)
+        ax.set_ylim(0, None)
+        ax.set_xlim(0.5, len(data) + 0.8)
+        ax.set_xticks(range(1, len(names) + 1))
+        ax.set_xticklabels(names, fontsize=8.5)
+        ax.set_title(titles.get(bag, bag), fontsize=10)
+        ax.grid(axis="y", alpha=0.3)
+    np.atleast_1d(axs)[0].set_ylabel("время обработки кадра, мс")
+    np.atleast_1d(axs)[0].text(0.55, 103, "бюджет 100 мс (лидар 10 Гц)", color="#e03131",
+                               fontsize=8.5)
+    cpu = runs[0].get("cpu", "")
+    fig.suptitle(f"Эксперимент 19: время кадра до и после ускорения — ответ совпадает с "
+                 f"эталоном бит в бит\n{cpu}, кадры в памяти, по 100 кадров на запись",
+                 fontsize=11)
+    fig.tight_layout()
+    fig.savefig(out, dpi=110)
+    print(out)
+
+
 def main():
     a = argparse.ArgumentParser()
-    a.add_argument("mode", choices=["golden", "check", "bench"])
+    a.add_argument("mode", choices=["golden", "check", "bench", "plot"])
     a.add_argument("--dataset", default=None)
     a.add_argument("--bags", nargs="*", default=None)
     a.add_argument("--all", action="store_true", help="все записи разработки ускорения (15)")
@@ -298,9 +354,16 @@ def main():
     a.add_argument("--jobs", type=int, default=5)
     a.add_argument("--label", default="ref")
     a.add_argument("--bench-frames", type=int, default=105)
+    a.add_argument("--workers", type=int, default=1, help="потоков на кадр (1 — последовательно)")
+    a.add_argument("--names", default=None, help="plot: подписи замеров через запятую")
+    a.add_argument("--out", default="results/exp19/speed_boxplot.png")
     args = a.parse_args()
     if args.mode == "bench":
-        bench(args.label, BENCH_BAGS, args.bench_frames)
+        bench(args.label, BENCH_BAGS, args.bench_frames, args.workers)
+        return
+    if args.mode == "plot":
+        labels = args.label.split(",")
+        plot(labels, args.names.split(",") if args.names else labels, args.out)
         return
     if args.all:
         jobs = DEV
@@ -311,7 +374,8 @@ def main():
     if any(b == FROZEN for _, b in jobs) and not args.frozen:
         raise SystemExit("New_synth заморожена: сверка на ней — только с --frozen, в конце")
     with ProcessPoolExecutor(args.jobs) as ex:
-        for line in ex.map(_job, [(args.mode, d, b, args.max_frames) for d, b in jobs]):
+        for line in ex.map(_job, [(args.mode, d, b, args.max_frames, args.workers)
+                                  for d, b in jobs]):
             print(line, flush=True)
 
 

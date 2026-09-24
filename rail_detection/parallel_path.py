@@ -720,15 +720,24 @@ class WallParallelTracker:
         else:
             ds_use = self.last_ds if self.last_ds is not None else 0.0
 
+        from . import parallel as par
+
         cands = []
         prior_m = prior_sig = None
         pred = None
+        mem_job = None
         if self.st is not None:
             pred = self.st.advance(ds_use)
             prior_m, prior_sig = pred.m, pred.prior_sigma()
-            m, info = refine(pred, pred.m.copy(), edges, rails, prior_m, prior_sig,
-                             self.TRACK_SCALES)
+            # «память» и «заново» независимы: при нескольких потоках «память»
+            # считается в пуле, пока здесь считается «заново» (экспер. 19)
+            mem_job = par.submit(refine, pred, pred.m.copy(), edges, rails, prior_m, prior_sig,
+                                 self.TRACK_SCALES)
+        if mem_job is not None and par.workers() <= 1:
+            m, info = mem_job.result()
             cands.append(("память", pred, m, info))
+            mem_job = None
+        fresh = None
         if fresh_path is not None:
             st0 = state_from_path(fresh_path[0], fresh_path[1], edges, fresh_walls)
             if pred is not None:
@@ -736,7 +745,12 @@ class WallParallelTracker:
                 st0 = _resample(st0, pred)
             st0, m, info = refine_with_steps(st0, st0.m.copy(), edges, rails,
                                              self.FRESH_SCALES)
-            cands.append(("заново", st0, m, info))
+            fresh = ("заново", st0, m, info)
+        if mem_job is not None:
+            m, info = mem_job.result()
+            cands.append(("память", pred, m, info))
+        if fresh is not None:
+            cands.append(fresh)
         if not cands:
             return None
         scored = [(total_cost(st, m, edges, rails, prior_m, prior_sig), name, st, m, info)
@@ -783,6 +797,29 @@ class WallParallelTracker:
 
 # ---------------------------------------------------------------- габарит
 
+def _xyz(px, py, pz):
+    """Точки кадра с откликом (нулевые — лидар не получил отражения), float64."""
+    x = px.astype(float)
+    y = py.astype(float)
+    z = pz.astype(float)
+    keep = (np.abs(x) + np.abs(y) + np.abs(z)) > 0.1
+    return x[keep], y[keep], z[keep]
+
+
+def _gauge_frame(s, u, v, pgrid, theta, uc, vc, limit):
+    """Координаты габарита (поворот на крен своего сечения, от середины между
+    головками) и маска коробки эталона §27 — поэлементно по точкам."""
+    from . import contrast_gauge as cg
+
+    th_p = np.interp(s, pgrid, theta)
+    du, dv = u - np.interp(s, pgrid, uc), v - np.interp(s, pgrid, vc)
+    ug = du * np.cos(th_p) + dv * np.sin(th_p)
+    vg = -du * np.sin(th_p) + dv * np.cos(th_p)
+    inside = ((np.abs(ug) <= cg.HALF_WIDTH) & (vg >= cg.GAUGE_BOTTOM) & (vg <= cg.GAUGE_H)
+              & (s > cg.NEAR_LIMIT) & (s <= limit))
+    return ug, vg, inside
+
+
 class ParallelGauge:
     """Последовательный проход по записи: путь и стены — WallParallelTracker,
     габарит и находки — ровно как в §27 (contrast_gauge.ContrastGauge), только
@@ -804,11 +841,12 @@ class ParallelGauge:
         from .tunnel_frame import rail_samples
         from .views import D_MAX, floor_level, rasterize, run_silhouette, shape_x
 
-        x = points['x'].astype(float)
-        y = points['y'].astype(float)
-        z = points['z'].astype(float)
-        keep = (np.abs(x) + np.abs(y) + np.abs(z)) > 0.1
-        x, y, z = x[keep], y[keep], z[keep]
+        from . import parallel as par
+
+        # Рельсы от вида сверху не зависят: при нескольких потоках они считаются,
+        # пока строится вид сверху (экспер. 19). При одном — сразу, как раньше.
+        rails_job = par.submit(rail_samples, points)
+        x, y, z = par.chunked(_xyz, (points['x'], points['y'], points['z']))
 
         grid = rasterize(points)
         sil = run_silhouette(grid, self.prior)
@@ -817,7 +855,7 @@ class ParallelGauge:
         d_e, l_e, r_e, L_e = sil["edges"]
         edges = edges_from_bands(d_e, l_e, r_e, L_e)
 
-        rail_d, rail_x, _, gauge = rail_samples(points)
+        rail_d, rail_x, _, gauge = rails_job.result()
         gauge = gauge or 1.60
         fresh = None
         if fit is not None and fit.get("reach"):
@@ -839,7 +877,7 @@ class ParallelGauge:
         floor, _, _ = floor_level(grid, lambda d: float(np.interp(d, ref["d"], ref["x"])))
         if floor is None:
             floor = np.array([0.0, float(np.percentile(z, 2))])
-        s0, u0, v0 = cg.to_path_coords(x, y, z, ref, floor)
+        s0, u0, v0 = par.chunked(cg.to_path_coords, (x, y, z), ref, floor)
         band_sel = (v0 >= cg.BAND_LO) & (v0 <= cg.BAND_HI) & (s0 > 2) & (s0 < 60)
         band = {"d": s0[band_sel], "u": u0[band_sel], "v": v0[band_sel]}
         shift = None
@@ -859,19 +897,13 @@ class ParallelGauge:
         mode = "rails+walls" if tr["n_rails"] >= 3 else "walls"
         path = to_path_dict(tr["curve"], cg.PATH_GRID, mode)
 
-        s, u, v = cg.to_path_coords(x, y, z, path, floor)
+        s, u, v = par.chunked(cg.to_path_coords, (x, y, z), path, floor)
         pose = cg._clean_pose(rail_pose_track(s, u, v, gauge, cg.POSE_DEPTHS,
                                               lambda D: max(1.0, cg.half_thick(D))))
         pgrid = np.arange(0.0, D_MAX + 1.0, 1.0)
         theta, uc, vc, has_pose = cg._pose_curves(pose, pgrid)
-        th_p = np.interp(s, pgrid, theta)
-        du, dv = u - np.interp(s, pgrid, uc), v - np.interp(s, pgrid, vc)
-        ug = du * np.cos(th_p) + dv * np.sin(th_p)
-        vg = -du * np.sin(th_p) + dv * np.cos(th_p)
-
         limit = min(float(tr["reach"]), D_MAX)
-        inside = ((np.abs(ug) <= cg.HALF_WIDTH) & (vg >= cg.GAUGE_BOTTOM) & (vg <= cg.GAUGE_H)
-                  & (s > cg.NEAR_LIMIT) & (s <= limit))
+        ug, vg, inside = par.chunked(_gauge_frame, (s, u, v), pgrid, theta, uc, vc, limit)
         clusters = cg.cluster(s[inside], ug[inside], vg[inside])
         # подтверждение — по тому Δs, которым перенесено состояние: отброшенный
         # как противоречащий инерции замер заменён прежней скоростью
