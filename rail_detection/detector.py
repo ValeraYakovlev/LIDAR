@@ -30,6 +30,40 @@ DEFAULT_DEPTH_BINS = [
 ]  # надёжная зона по данным ~до 30-40м, дальше плотность точек не позволяет
 
 
+def _bin_medians(xb, bins, *vals, min_count=3):
+    """Медианный профиль по бинам x: центры бинов, где точек не меньше min_count,
+    и медиана каждого массива vals в этих бинах.
+
+    Ровно то, что давал цикл `for i: m = idx == i; np.median(v[m])`, но одной
+    сортировкой (экспер. 19: цикл — 160 бинов × 13 срезов на кадр). Медиана
+    берётся так же, как в np.median: нечётное число — средний элемент, чётное —
+    (a + b) / 2 в типе массива. При NaN — прежний цикл (np.median даёт NaN)."""
+    idx = np.digitize(xb, bins)
+    if any(np.isnan(v).any() for v in vals):
+        cols = [[] for _ in vals]
+        centers = []
+        for i in range(1, len(bins)):
+            m = idx == i
+            if m.sum() >= min_count:
+                centers.append((bins[i - 1] + bins[i]) / 2)
+                for c, v in zip(cols, vals):
+                    c.append(np.median(v[m]))
+        return np.array(centers), [np.array(c) for c in cols]
+    counts = np.bincount(idx, minlength=len(bins) + 1)
+    start = np.concatenate([[0], np.cumsum(counts)[:-1]])
+    keep = np.flatnonzero(counts[1:len(bins)] >= min_count) + 1
+    centers = (bins[keep - 1] + bins[keep]) / 2
+    n = counts[keep]
+    lo = start[keep] + (n - 1) // 2
+    hi = start[keep] + n // 2
+    out = []
+    for v in vals:
+        vs = v[np.lexsort((v, idx))]
+        a, b = vs[lo], vs[hi]
+        out.append(np.where(n % 2 == 1, a, (a + b) / v.dtype.type(2)).astype(v.dtype))
+    return centers, out
+
+
 def find_groove_and_rails(points, depth_lo, depth_hi, x_range=4.0, xbin=0.05, path_coeffs=None):
     """Ищет желоб и рельсы в срезе points на глубине [depth_lo, depth_hi).
 
@@ -62,16 +96,9 @@ def find_groove_and_rails(points, depth_lo, depth_hi, x_range=4.0, xbin=0.05, pa
     xb, zb = xr[band], zr[band]
 
     bins = np.arange(-x_range, x_range + xbin, xbin)
-    idx = np.digitize(xb, bins)
-    prof_x, prof_z = [], []
-    for i in range(1, len(bins)):
-        m = idx == i
-        if m.sum() >= 3:
-            prof_x.append((bins[i - 1] + bins[i]) / 2)
-            prof_z.append(np.median(zb[m]))
+    prof_x, (prof_z,) = _bin_medians(xb, bins, zb)
     if len(prof_x) < 15:
         return None
-    prof_x, prof_z = np.array(prof_x), np.array(prof_z)
 
     # --- желоб: глобальный минимум профиля + точки выхода на полувысоте ---
     search = np.abs(prof_x) < 2.5
@@ -141,17 +168,10 @@ def _floor_profile_xz(points, depth_lo, depth_hi, x_range=4.0, xbin=0.05):
         return None
     xb, zb, ib = xr[band], zr[band], ir[band]
     bins = np.arange(-x_range, x_range + xbin, xbin)
-    idx = np.digitize(xb, bins)
-    px, pz, pi = [], [], []
-    for i in range(1, len(bins)):
-        m = idx == i
-        if m.sum() >= 3:
-            px.append((bins[i - 1] + bins[i]) / 2)
-            pz.append(np.median(zb[m]))
-            pi.append(np.median(ib[m]))
+    px, (pz, pi) = _bin_medians(xb, bins, zb, ib)
     if len(px) < 15:
         return None
-    return np.array(px), np.array(pz), xb, zb, np.array(pi)
+    return px, pz, xb, zb, pi
 
 
 def _rail_darkness(pi, i_peak):
@@ -271,6 +291,15 @@ def analyze_frame(points, depth_bins=DEFAULT_DEPTH_BINS):
     """
     found = []
     skipped = 0
+    # Один раз за кадр — точки, попадающие хотя бы в один срез (порядок точек
+    # сохраняется): каждый срез иначе резал бы маской всё облако, а у
+    # doubleT_obstacle это 921 тыс. точек × 13 срезов (экспер. 19). Срез из
+    # отобранных — тот же набор в том же порядке: условие среза строже отбора.
+    if len(depth_bins):
+        d_lo = min(lo for lo, _ in depth_bins)
+        d_hi = max(hi for _, hi in depth_bins)
+        depth = -points['y']
+        points = points[(depth >= d_lo) & (depth < d_hi) & (np.abs(points['x']) < 4.0)]
     for lo, hi in depth_bins:
         r = find_rails(points, lo, hi)
         if r is None:
