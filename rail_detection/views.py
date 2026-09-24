@@ -25,6 +25,7 @@
 import numpy as np
 from scipy import ndimage
 
+from .fastops import group_percentile, lstsq_batch
 
 CELL_X = 0.10       # м, клетка сетки поперёк
 CELL_D = 0.50       # м, клетка сетки вдоль
@@ -108,11 +109,18 @@ def contrast_image(grid, ref_pct=75.0, ref_window=4.0):
     nd = count.shape[0]
     half = max(1, int(round(ref_window / 2 / grid["cell_d"])))
     ref = np.ones(nd)
-    for i in range(nd):
-        blk = count[max(0, i - half):i + half + 1]
-        nz = blk[blk > 0]
-        if len(nz):
-            ref[i] = max(np.percentile(nz, ref_pct), 1.0)
+    # Окно строки i — строки [i − half, i + half]; занятая клетка строки r входит
+    # в окна r − half … r + half. Перцентили всех окон — одним проходом
+    # (экспер. 19: раньше np.percentile на каждую строку), ответ тот же.
+    rows, cols = np.nonzero(count > 0)
+    vals = count[rows, cols]
+    off = np.arange(-half, half + 1)
+    win = (rows[None, :] + off[:, None]).ravel()
+    vv = np.broadcast_to(vals, (len(off), len(vals))).ravel()
+    ok = (win >= 0) & (win < nd)
+    pct = group_percentile(vv[ok], win[ok], nd, ref_pct)
+    has = ~np.isnan(pct)
+    ref[has] = np.maximum(pct[has], 1.0)
     img = np.log1p(count) / np.log1p(ref)[:, None]
     return np.clip(img, 0.0, 1.0)
 
@@ -522,13 +530,10 @@ def _ransac(d, x, w, sid, n_sets, sides, deg, tol, n_hyp=400, seed=0):
     dd = d[S]
     # по глубине выборка должна быть разнесена, иначе кривизна — шум
     spread = (dd.max(axis=1) - dd.min(axis=1)) >= 10.0
-    hyps = []
-    for sel in S[distinct & spread]:
-        c, *_ = np.linalg.lstsq(A[sel], x[sel], rcond=None)
-        hyps.append(c)
-    if not hyps:
+    good = S[distinct & spread]
+    if not len(good):
         return None
-    H = np.array(hyps)
+    H = lstsq_batch(A[good], x[good])
     pred, _ = _observed_edge(H, n_sets, sid, d, sides)
     cost = np.sum(w[None, :] * np.minimum((x[None, :] - pred) ** 2, tol ** 2), axis=1)
     return H[int(np.argmin(cost))]

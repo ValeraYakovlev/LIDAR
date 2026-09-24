@@ -22,6 +22,8 @@
 
 import numpy as np
 
+from .fastops import group_percentile
+
 HEAD_WINDOW = 0.05     # м: окрестность рельса по x, в которой ищется головка
 HEAD_PCT = 90.0        # перцентиль высоты — верх головки, а не подошва
 CEIL_V_MIN = 3.0       # м над головкой рельса: ниже свода не бывает
@@ -144,15 +146,26 @@ def _head(u, v, u_expected):
     uu, vv = u[m], v[m]
     edges = np.arange(u_expected - HEAD_SEARCH, u_expected + HEAD_SEARCH + HEAD_BIN, HEAD_BIN)
     idx = np.digitize(uu, edges)
-    best = None
-    for i in range(1, len(edges)):
-        k = idx == i
-        if k.sum() < 3:
-            continue
-        h = float(np.percentile(vv[k], HEAD_PCT))
-        if best is None or h > best[1]:
-            best = ((edges[i - 1] + edges[i]) / 2, h)
-    return best
+    if vv.dtype != np.float64 or np.isnan(vv).any():
+        best = None
+        for i in range(1, len(edges)):
+            k = idx == i
+            if k.sum() < 3:
+                continue
+            h = float(np.percentile(vv[k], HEAD_PCT))
+            if best is None or h > best[1]:
+                best = ((edges[i - 1] + edges[i]) / 2, h)
+        return best
+    # Перцентили всех бинов разом (экспер. 19), ответ тот же: самый высокий
+    # бин, при равенстве — первый.
+    counts = np.bincount(idx, minlength=len(edges) + 1)
+    ok = np.flatnonzero(counts[1:len(edges)] >= 3) + 1
+    if not len(ok):
+        return None
+    sel = np.isin(idx, ok)
+    h = group_percentile(vv[sel], idx[sel], len(edges) + 1, HEAD_PCT)[ok]
+    i = ok[int(np.argmax(h))]
+    return ((edges[i - 1] + edges[i]) / 2, float(h.max()))
 
 
 def rail_pose_track(d, u, v, gauge, depths, half_thick):
