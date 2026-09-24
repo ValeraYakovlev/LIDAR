@@ -576,6 +576,19 @@ def _chain_reach(depths, support=2):
     return None
 
 
+def _fit_degree(d, x, w, sid, n_sets, sides, deg, tol):
+    """Подгонка формы одной степени: старт RANSAC, Тьюки, цена по наблюдаемой
+    кромке. None — гипотез не нашлось."""
+    coef = _ransac(d, x, w, sid, n_sets, sides, deg, tol)
+    if coef is None:
+        return None
+    coef = _refine(d, x, w, sid, n_sets, sides, coef)
+    pred, hid = _observed_edge(coef, n_sets, sid, d, sides)
+    r = x - pred[0]
+    cost = _msac(r, w, tol)
+    return {"deg": deg, "coef": coef, "resid": r, "hidden": hid[0], "cost": cost}
+
+
 def fit_shared_shape(d_left, x_left, d_right, x_right, w_left=None, w_right=None,
                      max_deg=3, gain=0.85, tol=0.25, min_samples=10):
     """Обе кромки — одной формой: x = смещение_стороны + Σ a_j (d/50)^j.
@@ -610,23 +623,29 @@ def fit_shared_shape(d_left, x_left, d_right, x_right, w_left=None, w_right=None
         n_sets, sides = 1, (sides_all[keep],)
     if len(d) < min_samples:
         return None
-    best = None
+    from . import parallel as par
+
+    degs = []
     for deg in range(1, max_deg + 1):
         # кубике нужна длинная база: иначе она объясняет шум, а не S-кривую
         if deg == 3 and np.percentile(d, 90) < 60:
             break
-        coef = _ransac(d, x, w, sid, n_sets, sides, deg, tol)
-        if coef is None:
+        degs.append(deg)
+    # Степени подгоняются независимо: при распараллеливании вторая и третья — в
+    # отдельных процессах, пока здесь считается первая (экспер. 19). Выбор —
+    # тот же, по порядку степеней.
+    jobs = {deg: par.submit_to(deg - 1, _fit_degree, d, x, w, sid, n_sets, sides, deg, tol)
+            for deg in degs[1:]}
+    best = None
+    for deg in degs:
+        cand = (_fit_degree(d, x, w, sid, n_sets, sides, deg, tol) if deg == degs[0]
+                else jobs[deg].result())
+        if cand is None:
             continue
-        coef = _refine(d, x, w, sid, n_sets, sides, coef)
-        pred, hid = _observed_edge(coef, n_sets, sid, d, sides)
-        r = x - pred[0]
-        cost = _msac(r, w, tol)
-        cand = {"deg": deg, "coef": coef, "resid": r, "hidden": hid[0], "cost": cost}
         # Без досрочной остановки: «прямо вдоль платформы, потом поворот» дуга
         # описывает не лучше прямой, а кубика — хорошо. Если остановиться на
         # первой неудачной степени, до кубики дело не дойдёт.
-        if best is None or cost < gain * best["cost"]:
+        if best is None or cand["cost"] < gain * best["cost"]:
             best = cand
     if best is None:
         return None

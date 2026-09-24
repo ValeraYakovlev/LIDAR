@@ -283,6 +283,22 @@ def find_rails(points, depth_lo, depth_hi, **kwargs):
     return find_rails_by_gauge(points, depth_lo, depth_hi)
 
 
+def slices_subset(points, depth_bins=DEFAULT_DEPTH_BINS):
+    """Точки, попадающие хотя бы в один срез (порядок сохраняется).
+
+    Каждый срез иначе резал бы маской всё облако, а у doubleT_obstacle это
+    921 тыс. точек × 13 срезов (экспер. 19). Срез из отобранных — тот же набор
+    в том же порядке: условие среза строже отбора. Повторный отбор ничего не
+    меняет, поэтому отобранное можно отдать analyze_frame (или другому процессу)
+    вместо всего кадра."""
+    if not len(depth_bins):
+        return points
+    d_lo = min(lo for lo, _ in depth_bins)
+    d_hi = max(hi for _, hi in depth_bins)
+    depth = -points['y']
+    return points[(depth >= d_lo) & (depth < d_hi) & (np.abs(points['x']) < 4.0)]
+
+
 def analyze_frame(points, depth_bins=DEFAULT_DEPTH_BINS):
     """Прогоняет find_groove_and_rails по списку срезов глубины.
 
@@ -291,15 +307,7 @@ def analyze_frame(points, depth_bins=DEFAULT_DEPTH_BINS):
     """
     found = []
     skipped = 0
-    # Один раз за кадр — точки, попадающие хотя бы в один срез (порядок точек
-    # сохраняется): каждый срез иначе резал бы маской всё облако, а у
-    # doubleT_obstacle это 921 тыс. точек × 13 срезов (экспер. 19). Срез из
-    # отобранных — тот же набор в том же порядке: условие среза строже отбора.
-    if len(depth_bins):
-        d_lo = min(lo for lo, _ in depth_bins)
-        d_hi = max(hi for _, hi in depth_bins)
-        depth = -points['y']
-        points = points[(depth >= d_lo) & (depth < d_hi) & (np.abs(points['x']) < 4.0)]
+    points = slices_subset(points, depth_bins)
     for lo, hi in depth_bins:
         r = find_rails(points, lo, hi)
         if r is None:

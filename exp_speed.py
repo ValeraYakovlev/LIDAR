@@ -165,9 +165,10 @@ def compare(ref, new):
 
 
 def _job(args):
-    mode, dataset, bag, max_frames, workers = args
+    mode, dataset, bag, max_frames, workers, process = args
     from rail_detection import parallel as par
     par.set_workers(workers)
+    par.set_process(process)
     tag = Path(dataset).name
     t0 = time.time()
     rows = run_bag(dataset, bag, max_frames)
@@ -180,7 +181,7 @@ def _job(args):
     if max_frames is not None:
         ref = ref[:len(rows)]
     # сравнение через ту же запись/чтение, что и эталон: одинаковые типы
-    tmp = Path("/tmp") / f"exp19_check_{tag}_{bag}_w{workers}"
+    tmp = Path("/tmp") / f"exp19_check_{tag}_{bag}_w{workers}{'p' if process else ''}"
     save(rows, tmp)
     diff = compare(ref, load(tmp))
     if diff is None:
@@ -242,10 +243,11 @@ def _instrument(log):
     far_detect.FarDetector.update = wrap(far_detect.FarDetector.update, "детектор 18")
 
 
-def bench(label, bags, n_frames, workers=1):
+def bench(label, bags, n_frames, workers=1, process=False):
     from rail_detection import bag_path, iter_frames
     from rail_detection import parallel as par
     par.set_workers(workers)
+    par.set_process(process)
     from rail_detection import far_detect as fd
     from rail_detection.parallel_path import ParallelGauge
 
@@ -255,7 +257,7 @@ def bench(label, bags, n_frames, workers=1):
     import subprocess
     cpu = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True,
                          text=True).stdout.strip() or platform.processor()
-    out = {"label": label, "cpu": cpu, "workers": workers, "bags": {}}
+    out = {"label": label, "cpu": cpu, "workers": workers, "process": process, "bags": {}}
     for dataset, bag in bags:
         frames = [p.copy() for _, p, _ in iter_frames(bag_path(dataset, bag), max_frames=n_frames)]
         pg = ParallelGauge()
@@ -355,11 +357,13 @@ def main():
     a.add_argument("--label", default="ref")
     a.add_argument("--bench-frames", type=int, default=105)
     a.add_argument("--workers", type=int, default=1, help="потоков на кадр (1 — последовательно)")
+    a.add_argument("--process", action="store_true",
+                   help="рельсы и «память» трекера — в отдельном процессе (при --workers > 1)")
     a.add_argument("--names", default=None, help="plot: подписи замеров через запятую")
     a.add_argument("--out", default="results/exp19/speed_boxplot.png")
     args = a.parse_args()
     if args.mode == "bench":
-        bench(args.label, BENCH_BAGS, args.bench_frames, args.workers)
+        bench(args.label, BENCH_BAGS, args.bench_frames, args.workers, args.process)
         return
     if args.mode == "plot":
         labels = args.label.split(",")
@@ -374,7 +378,7 @@ def main():
     if any(b == FROZEN for _, b in jobs) and not args.frozen:
         raise SystemExit("New_synth заморожена: сверка на ней — только с --frozen, в конце")
     with ProcessPoolExecutor(args.jobs) as ex:
-        for line in ex.map(_job, [(args.mode, d, b, args.max_frames, args.workers)
+        for line in ex.map(_job, [(args.mode, d, b, args.max_frames, args.workers, args.process)
                                   for d, b in jobs]):
             print(line, flush=True)
 

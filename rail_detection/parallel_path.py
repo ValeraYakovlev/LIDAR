@@ -575,6 +575,27 @@ def _split_cost(s, u, w, bounds, c):
     return cost + STEP_COST * len(bounds), vals
 
 
+def _search_side(s, u, w, w0, c):
+    """Лучшее разбиение кромок одной стены: (цена, границы, отступы отрезков).
+    Жадно — одна ступенька, потом вторая (см. search_steps)."""
+    base = min((float(np.sum(w * _tukey_rho(u - v, c))) / SIGMA_EDGE ** 2, v)
+               for v in (w0, _wmedian(u, w)))
+    best = (base[0], [], np.array([base[1]]))
+    grid = np.arange(5.0, s.max() - 5.0, STEP_GRID)
+    for _ in range(MAX_STEPS):
+        cur = best
+        for b in grid:
+            if any(abs(b - x) < 5.0 for x in cur[1]):
+                continue
+            bounds = sorted(cur[1] + [b])
+            r = _split_cost(s, u, w, bounds, c)
+            if r is not None and r[0] < best[0]:
+                best = (r[0], bounds, r[1])
+        if best is cur:
+            break
+    return best
+
+
 def search_steps(st, m, edges, rails):
     """Для каждой стены: сколько ступенек отступа (0..MAX_STEPS) и где.
 
@@ -582,32 +603,30 @@ def search_steps(st, m, edges, rails):
     внутри получившихся отрезков — каждая принимается, только если окупает
     STEP_COST. Без ступенек — лучший из текущего отступа и медианы всех кромок.
     """
+    from . import parallel as par
+
     curve, s_e, r_e, ok_e, _, _ = _evaluate(st, m, edges, rails)
     es, ew = edges[2], edges[3]
     u_e = r_e + _wall_at(st, m, s_e, es)
     c = TUKEY * SIGMA_EDGE
     W = st.widths(m).copy()
     sb = np.full((2, MAX_STEPS), np.inf)
-    for side in (0, 1):
+    # Стены перебираются независимо: при распараллеливании правая — в отдельном
+    # процессе, пока здесь перебирается левая (экспер. 19).
+    jobs = {}
+    for side in (1, 0):
         sel = (es == side) & ok_e
         s, u, w = s_e[sel], u_e[sel], ew[sel]
         if len(s) < 6:
             continue
-        base = min((float(np.sum(w * _tukey_rho(u - v, c))) / SIGMA_EDGE ** 2, v)
-                   for v in (W[side][0], _wmedian(u, w)))
-        best = (base[0], [], np.array([base[1]]))
-        grid = np.arange(5.0, s.max() - 5.0, STEP_GRID)
-        for _ in range(MAX_STEPS):
-            cur = best
-            for b in grid:
-                if any(abs(b - x) < 5.0 for x in cur[1]):
-                    continue
-                bounds = sorted(cur[1] + [b])
-                r = _split_cost(s, u, w, bounds, c)
-                if r is not None and r[0] < best[0]:
-                    best = (r[0], bounds, r[1])
-            if best is cur:
-                break
+        if side == 1:
+            jobs[side] = par.submit_to(1, _search_side, s, u, w, float(W[side][0]), c)
+        else:
+            jobs[side] = par._Done(_search_side(s, u, w, float(W[side][0]), c))
+    for side in (0, 1):
+        if side not in jobs:
+            continue
+        best = jobs[side].result()
         n = len(best[1])
         sb[side][:n] = best[1]
         W[side][:n + 1] = best[2]
@@ -731,8 +750,8 @@ class WallParallelTracker:
             prior_m, prior_sig = pred.m, pred.prior_sigma()
             # «память» и «заново» независимы: при нескольких потоках «память»
             # считается в пуле, пока здесь считается «заново» (экспер. 19)
-            mem_job = par.submit(refine, pred, pred.m.copy(), edges, rails, prior_m, prior_sig,
-                                 self.TRACK_SCALES)
+            mem_job = par.submit_refine(refine, pred, pred.m.copy(), edges, rails, prior_m,
+                                        prior_sig, self.TRACK_SCALES)
         if mem_job is not None and par.workers() <= 1:
             m, info = mem_job.result()
             cands.append(("память", pred, m, info))
@@ -806,6 +825,11 @@ def _xyz(px, py, pz):
     return x[keep], y[keep], z[keep]
 
 
+def _height(y, z, floor_coeffs):
+    """v из to_path_coords — высота над профилем пола, та же формула."""
+    return z - np.polyval(floor_coeffs, -y)
+
+
 def _gauge_frame(s, u, v, pgrid, theta, uc, vc, limit):
     """Координаты габарита (поворот на крен своего сечения, от середины между
     головками) и маска коробки эталона §27 — поэлементно по точкам."""
@@ -838,6 +862,7 @@ class ParallelGauge:
         from . import contrast_gauge as cg
         from .roll import rail_pose_track
         from .shift import estimate_shift
+        from .detector import slices_subset
         from .tunnel_frame import rail_samples
         from .views import D_MAX, floor_level, rasterize, run_silhouette, shape_x
 
@@ -845,7 +870,9 @@ class ParallelGauge:
 
         # Рельсы от вида сверху не зависят: при нескольких потоках они считаются,
         # пока строится вид сверху (экспер. 19). При одном — сразу, как раньше.
-        rails_job = par.submit(rail_samples, points)
+        # рельсам нужны только точки срезов (3–40 м, |x| < 4 м): в отдельный
+        # процесс уходят они, а не весь кадр — ответ тот же (detector.slices_subset)
+        rails_job = par.submit_rails(rail_samples, slices_subset(points))
         x, y, z = par.chunked(_xyz, (points['x'], points['y'], points['z']))
 
         grid = rasterize(points)
@@ -877,8 +904,14 @@ class ParallelGauge:
         floor, _, _ = floor_level(grid, lambda d: float(np.interp(d, ref["d"], ref["x"])))
         if floor is None:
             floor = np.array([0.0, float(np.percentile(z, 2))])
-        s0, u0, v0 = par.chunked(cg.to_path_coords, (x, y, z), ref, floor)
-        band_sel = (v0 >= cg.BAND_LO) & (v0 <= cg.BAND_HI) & (s0 > 2) & (s0 < 60)
+        # Для Δs нужна только полоса высот BAND_LO–BAND_HI над полом: высота
+        # считается той же формулой, что в to_path_coords, и дёшево, а s и u —
+        # только для точек нужной высоты. Значения для них те же, что при расчёте
+        # по всему облаку, порядок тот же (экспер. 19).
+        v_all = par.chunked(_height, (y, z), floor)
+        hb = (v_all >= cg.BAND_LO) & (v_all <= cg.BAND_HI)
+        s0, u0, v0 = cg.to_path_coords(x[hb], y[hb], z[hb], ref, floor)
+        band_sel = (s0 > 2) & (s0 < 60)
         band = {"d": s0[band_sel], "u": u0[band_sel], "v": v0[band_sel]}
         shift = None
         if self.prev_band is not None and len(band["d"]) > 500:
