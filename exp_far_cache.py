@@ -149,10 +149,12 @@ def main():
     p.add_argument("--bags", nargs="+", required=True)
     p.add_argument("--out", default="output/exp18_cache")
     p.add_argument("--max-frames", type=int, default=None)
+    p.add_argument("--holdout", action="store_true",
+                   help="отложенный замер: разрешить roundT_squareT_pressureGate_squareT")
     a = p.parse_args()
-    if "roundT_squareT_pressureGate_squareT" in a.bags:
+    if "roundT_squareT_pressureGate_squareT" in a.bags and not a.holdout:
         raise SystemExit("roundT_squareT_pressureGate_squareT отложен (эксперимент 18): "
-                         "только на финальном замере")
+                         "только на финальном замере, с --holdout")
     tag = Path(a.dataset).name
     for bag in a.bags:
         run(a.dataset, bag, Path(a.out) / tag, a.max_frames)

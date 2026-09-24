@@ -44,9 +44,13 @@ def tol(d):
     return max(2.0, 0.06 * d)
 
 
+HOLDOUT = False   # --holdout: New_synth — только отложенная часть (длина пути >= S_B)
+
+
 def truth_for(tag, bag, cols):
     """Покадровая правда: список [(дальность, в габарите?, имя)] на кадр и
-    предел длины пути (для New_synth — S_B, иначе бесконечность)."""
+    отбор по длине пути: для New_synth на разработке — меньше S_B, на
+    отложенном замере — не меньше S_B; иначе — всё."""
     n = len(cols["idx"])
     T = [[] for _ in range(n)]
     S = track_length(cols)
@@ -54,7 +58,11 @@ def truth_for(tag, bag, cols):
     if tag == "new_synth":
         info = json.load(open("results/exp18/new_synth_objects.json"))
         s_cut = info["S_B"]
-        for o in info["objects"]:
+        objs = info["objects"]
+        if HOLDOUT:
+            objs = json.load(open("results/exp18/new_synth_holdout_objects.json"))["objects"]
+            s_cut = -info["S_B"]      # отрицательная граница: берётся всё, что дальше |s_cut|
+        for o in objs:
             for k in range(n):
                 d = o["s_obj"] - S[k]
                 if -1.0 < d < 200.0:
@@ -73,13 +81,14 @@ def truth_for(tag, bag, cols):
 def score(tag, bag, cols, det, verbose=False):
     """det[k] = (raw: [dist...], conf: [dist...]) — находки варианта на кадре k."""
     T, S, s_cut = truth_for(tag, bag, cols)
+    keep = (lambda sg: sg < s_cut) if s_cut >= 0 else (lambda sg: sg >= -s_cut)
     objs = {}
     false_raw = false_conf = 0
     for k, (raw, conf) in enumerate(det):
-        # участок отложенной части вырезается до подсчёта
-        raw = [d for d in raw if S[k] + d < s_cut]
-        conf = [d for d in conf if S[k] + d < s_cut]
-        tk = [t for t in T[k] if S[k] + t[0] < s_cut]
+        # участок другой части вырезается до подсчёта
+        raw = [d for d in raw if keep(S[k] + d)]
+        conf = [d for d in conf if keep(S[k] + d)]
+        tk = [t for t in T[k] if keep(S[k] + t[0])]
         for t in tk:
             o = objs.setdefault(t[2], {"pos": t[1], "raw": [], "conf": [], "seen": []})
             o["seen"].append((k, t[0]))
@@ -130,7 +139,9 @@ def fmt(v, f="{:.0f}"):
 
 
 def _job(args):
-    tag, bag, v = args
+    tag, bag, v, holdout = args
+    global HOLDOUT
+    HOLDOUT = holdout
     cols, pts = load(CACHE / tag, bag)
     return bag, v, score(tag, bag, cols, run_variant(v, cols, pts))
 
@@ -171,9 +182,16 @@ def main():
     p.add_argument("--json", default=None)
     p.add_argument("--summary", action="store_true", help="только сводная таблица")
     p.add_argument("--jobs", type=int, default=6)
+    p.add_argument("--holdout", action="store_true",
+                   help="отложенный замер: New_synth дальше S_B и roundT_squareT_pressureGate_squareT")
     a = p.parse_args()
+    global HOLDOUT, DEV
+    if a.holdout:
+        HOLDOUT = True
+        DEV = [("new_synth", "cloud_with_fake_obj"),
+               ("Dataset", "roundT_squareT_pressureGate_squareT")]
     from concurrent.futures import ProcessPoolExecutor
-    jobs = [(tag, bag, v) for tag, bag in DEV if not a.bags or bag in a.bags
+    jobs = [(tag, bag, v, HOLDOUT) for tag, bag in DEV if not a.bags or bag in a.bags
             for v in a.variants]
     allres = {}
     with ProcessPoolExecutor(a.jobs) as ex:
