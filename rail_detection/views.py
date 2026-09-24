@@ -25,6 +25,7 @@
 import numpy as np
 from scipy import ndimage
 
+
 CELL_X = 0.10       # м, клетка сетки поперёк
 CELL_D = 0.50       # м, клетка сетки вдоль
 X_HALF = 16.0       # м, сетка по x: [-X_HALF, X_HALF]
@@ -421,6 +422,87 @@ def _msac(resid, w, tol):
     return float(np.sum(w * np.minimum(resid ** 2, tol ** 2)) / max(w.sum(), 1e-9))
 
 
+def _choice_no_replace(p, k, take):
+    """rng.choice(len(p), k, replace=False, p=p) — тот же алгоритм numpy, что и
+    в Generator.choice (отбор с повторной выборкой совпавших), на равномерных
+    числах take(m) из того же потока. Возвращает индексы."""
+    p = p.copy()
+    found = np.zeros(k, np.int64)
+    n_uniq = 0
+    while n_uniq < k:
+        u = take(k - n_uniq)
+        if n_uniq > 0:
+            p[found[:n_uniq]] = 0
+        cdf = np.cumsum(p)
+        cdf /= cdf[-1]
+        new = cdf.searchsorted(u, side="right")
+        _, first = np.unique(new, return_index=True)
+        first.sort()
+        new = new.take(first)
+        found[n_uniq:n_uniq + new.size] = new
+        n_uniq += new.size
+    return found
+
+
+def _ransac_draws(rng, prob, idx_by, k_rest, n_hyp):
+    """Случайные выборки всех гипотез RANSAC разом — те же, что давал цикл
+
+        pick = [rng.choice(ix, p=prob[ix] / prob[ix].sum()) for ix in idx_by]
+        rest = rng.choice(len(prob), k_rest, replace=False, p=prob)
+
+    (экспер. 19: цикл занимал ~30 мс на степень). Generator.choice с весами
+    берёт равномерное число из потока и ищет его в накопленной сумме весов, а
+    без возвращения — повторяет выборку для совпавших. Поток читается пачкой
+    (random(N) даёт ровно те же числа, что N вызовов подряд), гипотезы без
+    совпадений внутри «остатка» считаются массивом, а редкие с совпадением —
+    точным повтором алгоритма numpy, со сдвигом дальнейшего потока.
+    """
+    n_sets = len(idx_by)
+    per = n_sets + k_rest
+    cdf_set = []
+    for ix in idx_by:
+        q = prob[ix] / prob[ix].sum()
+        c = q.cumsum()
+        c /= c[-1]
+        cdf_set.append(c)
+    cdf_all = np.cumsum(prob)
+    cdf_all /= cdf_all[-1]
+    buf = [rng.random(n_hyp * per + 64)]
+    pos = 0
+
+    def take(m):
+        nonlocal pos
+        while pos + m > len(buf[0]):
+            buf[0] = np.concatenate([buf[0], rng.random(max(m, 64))])
+        out = buf[0][pos:pos + m]
+        pos += m
+        return out
+
+    picks = np.zeros((n_hyp, n_sets), np.int64)
+    rests = np.zeros((n_hyp, k_rest), np.int64)
+    h = 0
+    while h < n_hyp:
+        m = n_hyp - h
+        blk = take(m * per).reshape(m, per)
+        P = np.column_stack([ix[c.searchsorted(blk[:, j], side="right")]
+                             for j, (ix, c) in enumerate(zip(idx_by, cdf_set))])
+        R = cdf_all.searchsorted(blk[:, n_sets:], side="right")
+        Rs = np.sort(R, axis=1)
+        dup = np.flatnonzero(np.any(Rs[:, 1:] == Rs[:, :-1], axis=1)) if k_rest > 1 else []
+        ok = m if len(dup) == 0 else int(dup[0])
+        picks[h:h + ok] = P[:ok]
+        rests[h:h + ok] = R[:ok]
+        # вернуть в поток всё, что взято сверх принятых гипотез
+        pos -= (m - ok) * per
+        h += ok
+        if h < n_hyp:
+            picks[h] = P[ok]
+            pos += n_sets
+            rests[h] = _choice_no_replace(prob, k_rest, take)
+            h += 1
+    return picks, rests
+
+
 def _ransac(d, x, w, sid, n_sets, sides, deg, tol, n_hyp=400, seed=0):
     """Старт подгонки: гипотезы по минимальным выборкам, у каждой — наблюдаемая
     кромка с учётом заслона, побеждает наименьшая MSAC-цена. Нужен потому, что
@@ -434,16 +516,14 @@ def _ransac(d, x, w, sid, n_sets, sides, deg, tol, n_hyp=400, seed=0):
     # поворот, почти не выпадают.
     prob = w / w.sum()
     idx_by = [np.where(sid == k)[0] for k in range(n_sets)]
+    picks, rests = _ransac_draws(rng, prob, idx_by, p - n_sets, n_hyp)
+    S = np.sort(np.column_stack([picks, rests]), axis=1)
+    distinct = np.all(S[:, 1:] != S[:, :-1], axis=1)
+    dd = d[S]
+    # по глубине выборка должна быть разнесена, иначе кривизна — шум
+    spread = (dd.max(axis=1) - dd.min(axis=1)) >= 10.0
     hyps = []
-    for _ in range(n_hyp):
-        pick = [rng.choice(ix, p=prob[ix] / prob[ix].sum()) for ix in idx_by]
-        rest = rng.choice(len(d), p - len(pick), replace=False, p=prob)
-        sel = np.unique(np.r_[pick, rest])
-        if len(sel) < p:
-            continue
-        # по глубине выборка должна быть разнесена, иначе кривизна — шум
-        if np.ptp(d[sel]) < 10.0:
-            continue
+    for sel in S[distinct & spread]:
         c, *_ = np.linalg.lstsq(A[sel], x[sel], rcond=None)
         hyps.append(c)
     if not hyps:
