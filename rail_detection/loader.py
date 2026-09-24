@@ -41,6 +41,33 @@ def _lidar_connections(reader):
     return conns
 
 
+_DATATYPES = {1: "i1", 2: "u1", 3: "<i2", 4: "<u2", 5: "<i4", 6: "<u4", 7: "<f4", 8: "<f8"}
+
+
+def to_points(msg):
+    """Облако сообщения как массив POINT_DTYPE.
+
+    Исходные записи лежат ровно в этой раскладке (26 байт на точку) и читаются
+    без копирования. Другие записи (New_synth_data: 16 байт, только x, y, z,
+    intensity) собираются по описанию полей из самого сообщения; поля, которых
+    в записи нет (ring, timestamp), заполняются нулями — конвейер пути и
+    габарита их не использует.
+    """
+    names = [(f.name, f.offset, f.datatype) for f in msg.fields]
+    if msg.point_step == POINT_DTYPE.itemsize and not msg.is_bigendian and \
+            [(n, o) for n, o, _ in names] == [(n, POINT_DTYPE.fields[n][1]) for n in POINT_DTYPE.names]:
+        return np.frombuffer(msg.data, dtype=POINT_DTYPE)
+    have = [(n, o, d) for n, o, d in names if n in POINT_DTYPE.names]
+    src_dt = np.dtype({"names": [n for n, _, _ in have],
+                       "formats": [_DATATYPES[d] for _, _, d in have],
+                       "offsets": [o for _, o, _ in have], "itemsize": msg.point_step})
+    src = np.frombuffer(msg.data, dtype=src_dt)
+    out = np.zeros(len(src), dtype=POINT_DTYPE)
+    for n, _, _ in have:
+        out[n] = src[n]
+    return out
+
+
 def bag_path(dataset_root, bag_name):
     return Path(dataset_root) / bag_name
 
@@ -59,7 +86,7 @@ def load_frame(bag_dir, frame_idx=None):
         for i, (conn, ts, rawdata) in enumerate(reader.messages(connections=conns)):
             if i == target:
                 msg = reader.deserialize(rawdata, conn.msgtype)
-                points = np.frombuffer(msg.data, dtype=POINT_DTYPE)
+                points = to_points(msg)
                 return points, n
     raise IndexError(f"кадр {target} не найден в {bag_dir} (всего кадров: {n})")
 
@@ -90,7 +117,7 @@ def iter_selected_frames(bag_dir, frame_indices):
         for i, (conn, ts, rawdata) in enumerate(reader.messages(connections=conns)):
             if i in want_set:
                 msg = reader.deserialize(rawdata, conn.msgtype)
-                yield i, np.frombuffer(msg.data, dtype=POINT_DTYPE)
+                yield i, to_points(msg)
             if i >= last:
                 return
 
@@ -113,7 +140,7 @@ def iter_frames(bag_dir, stride=1, max_frames=None):
             if i % stride != 0:
                 continue
             msg = reader.deserialize(rawdata, conn.msgtype)
-            points = np.frombuffer(msg.data, dtype=POINT_DTYPE)
+            points = to_points(msg)
             yield i, points, n
             yielded += 1
             if max_frames is not None and yielded >= max_frames:
