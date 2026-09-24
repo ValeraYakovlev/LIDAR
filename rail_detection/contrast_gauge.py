@@ -235,8 +235,23 @@ def gauge_corners(theta, uc, vc, bottom=GAUGE_BOTTOM, half=HALF_WIDTH, top=GAUGE
 
 
 def _voxel(pts, size=VOXEL):
+    """Одна точка на ячейку сетки: первая по порядку, ячейки — по возрастанию.
+
+    Номер ячейки упакован в одно целое с тем же лексикографическим порядком, что
+    у строки номеров: np.unique по строкам (axis=0) сортирует структурный массив
+    и в разы медленнее, а ответ тот же — сортировка устойчивая (экспер. 19)."""
     keys = np.floor(pts / size).astype(np.int64)
-    _, idx = np.unique(keys, axis=0, return_index=True)
+    if len(keys) == 0:
+        return pts[:0]
+    lo = keys.min(axis=0)
+    span = keys.max(axis=0) - lo + 1
+    if np.prod(span.astype(float)) >= 2.0 ** 62:
+        _, idx = np.unique(keys, axis=0, return_index=True)
+        return pts[idx]
+    mult = np.ones(keys.shape[1], np.int64)
+    for j in range(keys.shape[1] - 2, -1, -1):
+        mult[j] = mult[j + 1] * span[j + 1]
+    _, idx = np.unique((keys - lo) @ mult, return_index=True)
     return pts[idx]
 
 
