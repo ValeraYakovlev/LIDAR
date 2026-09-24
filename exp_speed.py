@@ -334,11 +334,12 @@ def plot(labels, names, out):
         ax.set_title(titles.get(bag, bag), fontsize=10)
         ax.grid(axis="y", alpha=0.3)
     np.atleast_1d(axs)[0].set_ylabel("время обработки кадра, мс")
-    np.atleast_1d(axs)[0].text(0.55, 103, "бюджет 100 мс (лидар 10 Гц)", color="#e03131",
-                               fontsize=8.5)
+    np.atleast_1d(axs)[-1].text(0.55, 104, "бюджет 100 мс (лидар 10 Гц)", color="#e03131",
+                                fontsize=8.5)
     cpu = runs[0].get("cpu", "")
-    fig.suptitle(f"Эксперимент 19: время кадра до и после ускорения — ответ совпадает с "
-                 f"эталоном бит в бит\n{cpu}, кадры в памяти, по 100 кадров на запись",
+    fig.suptitle(f"Эксперимент 19: время обработки кадра до и после ускорения — ответ тот же "
+                 f"(сверка с эталоном на 15 записях и на замороженной New_synth)\n"
+                 f"{cpu}, кадры в памяти, по 100 кадров на запись",
                  fontsize=11)
     fig.tight_layout()
     fig.savefig(out, dpi=110)
