@@ -160,8 +160,12 @@ def truth_tracks(tag, bag, stats):
         ds = np.array([s.get("ds", np.nan) for s in stats], float)
         S = track_length({"ds": ds})
         info = json.load(open("results/exp18/new_synth_objects.json"))
+        objs = list(info["objects"])
+        hold = Path("results/exp18/new_synth_holdout_objects.json")
+        if hold.exists():       # предметы 6–10 — только на полном GIF, ниже S_B их вырезает рисунок
+            objs += json.load(open(hold))["objects"]
         out = []
-        for o in info["objects"]:
+        for o in objs:
             d = o["s_obj"] - S
             k = np.flatnonzero((d > 0) & (d < D_SHOW))
             out.append((f"{o['n']}" + ("" if o["positive"] else " (вне)"), k, d[k]))
@@ -174,7 +178,9 @@ def truth_tracks(tag, bag, stats):
         return [("предмет", k, d)], None, None
     if bag == "doubleT_obstacle":
         k = np.arange(4, 76)
-        return [("человек", k, np.full(len(k), 55.5))], None, None
+        kb = np.arange(50, n)          # коробка на левом рельсе (экспер. 18б)
+        return [("человек", k, np.full(len(k), 55.5)),
+                ("коробка", kb, np.full(len(kb), 56.4))], None, None
     return [], None, None
 
 

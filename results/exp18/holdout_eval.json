@@ -1,0 +1,162 @@
+{
+ "cloud_with_fake_obj": {
+  "base_cached": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {
+    "10": {
+     "pos": true,
+     "n_raw": 0,
+     "n_conf": 0,
+     "raw_max": null,
+     "conf_max": null
+    },
+    "6": {
+     "pos": true,
+     "n_raw": 9,
+     "n_conf": 7,
+     "raw_max": 17.95426350164064,
+     "conf_max": 13.968310318732165,
+     "cont": 1.0,
+     "gaps": 0
+    },
+    "7": {
+     "pos": false,
+     "n_raw": 0,
+     "n_conf": 0,
+     "raw_max": null,
+     "conf_max": null
+    },
+    "8": {
+     "pos": true,
+     "n_raw": 29,
+     "n_conf": 22,
+     "raw_max": 81.99685322682797,
+     "conf_max": 70.48242064290616,
+     "cont": 0.6111111111111112,
+     "gaps": 1
+    },
+    "9": {
+     "pos": true,
+     "n_raw": 3,
+     "n_conf": 1,
+     "raw_max": 31.93325454770877,
+     "conf_max": 28.7163536957911,
+     "cont": 0.06666666666666667,
+     "gaps": 1
+    }
+   }
+  },
+  "base": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {
+    "10": {
+     "pos": true,
+     "n_raw": 0,
+     "n_conf": 0,
+     "raw_max": null,
+     "conf_max": null
+    },
+    "6": {
+     "pos": true,
+     "n_raw": 9,
+     "n_conf": 7,
+     "raw_max": 17.95426350164064,
+     "conf_max": 13.968310318732165,
+     "cont": 1.0,
+     "gaps": 0
+    },
+    "7": {
+     "pos": false,
+     "n_raw": 0,
+     "n_conf": 0,
+     "raw_max": null,
+     "conf_max": null
+    },
+    "8": {
+     "pos": true,
+     "n_raw": 29,
+     "n_conf": 22,
+     "raw_max": 81.99685322682797,
+     "conf_max": 70.48242064290616,
+     "cont": 0.6111111111111112,
+     "gaps": 1
+    },
+    "9": {
+     "pos": true,
+     "n_raw": 3,
+     "n_conf": 1,
+     "raw_max": 31.93325454770877,
+     "conf_max": 28.7163536957911,
+     "cont": 0.06666666666666667,
+     "gaps": 1
+    }
+   }
+  },
+  "final": {
+   "false_raw": 5,
+   "false_conf": 1,
+   "objects": {
+    "10": {
+     "pos": true,
+     "n_raw": 0,
+     "n_conf": 0,
+     "raw_max": null,
+     "conf_max": null
+    },
+    "6": {
+     "pos": true,
+     "n_raw": 22,
+     "n_conf": 20,
+     "raw_max": 45.80675332712474,
+     "conf_max": 41.83088550864659,
+     "cont": 0.9473684210526315,
+     "gaps": 1
+    },
+    "7": {
+     "pos": false,
+     "n_raw": 39,
+     "n_conf": 37,
+     "raw_max": 78.65630827874111,
+     "conf_max": 74.62588832235679
+    },
+    "8": {
+     "pos": true,
+     "n_raw": 67,
+     "n_conf": 65,
+     "raw_max": 131.88529809915428,
+     "conf_max": 127.8594515507258,
+     "cont": 1.0,
+     "gaps": 0
+    },
+    "9": {
+     "pos": true,
+     "n_raw": 53,
+     "n_conf": 51,
+     "raw_max": 96.34076462176336,
+     "conf_max": 92.94527068497212,
+     "cont": 0.9444444444444444,
+     "gaps": 1
+    }
+   }
+  }
+ },
+ "roundT_squareT_pressureGate_squareT": {
+  "base_cached": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {}
+  },
+  "base": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {}
+  },
+  "final": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {}
+  }
+ }
+}

@@ -64,6 +64,9 @@ for _d0 in (25, 30):
 FINAL = {**BASE, **TRAIN_LOW, **FAR, "r0": 80.0, "m_slope": 0.008, "m_d0": 40.0,
          "vprof": True, "alt_max": 0.3}
 VARIANTS["final"] = FINAL
+# Экспер. 18б (после отложенного замера, им не проверено): запас снизу отдельно.
+for _kb in (0.0, 0.002, 0.004):
+    VARIANTS[f"final_b{int(_kb * 1000)}"] = {**FINAL, "m_bottom_slope": _kb}
 for _r0 in (50, 100):
     for _k in (0.005, 0.008):
         VARIANTS[f"tl_r{_r0}_m{int(_k * 1000)}"] = {**BASE, **TRAIN_LOW, **FAR, "r0": float(_r0),
@@ -184,6 +187,14 @@ def margin(s, p):
     return k * np.maximum(0.0, s - p.get("m_d0", 40.0)) if k else 0.0
 
 
+def margin_bottom(s, p):
+    """Запас снизу — свой (экспер. 18б): по умолчанию тот же, что с боков и сверху."""
+    if "m_bottom_slope" not in p:
+        return margin(s, p)
+    k = p["m_bottom_slope"]
+    return k * np.maximum(0.0, s - p.get("m_d0", 40.0)) if k else 0.0
+
+
 def gauge_mask(s, u, v, limit, p):
     """Точки внутри габарита: прямоугольник кузова, снизу — по желанию уже
     (вырез под контактный рельс). Вдали габарит сжат на запас margin(s) со
@@ -191,7 +202,8 @@ def gauge_mask(s, u, v, limit, p):
     погрешности, с которой мы знаем, где он проходит."""
     au = np.abs(u)
     mg = margin(s, p)
-    m = (v >= p["bottom"] + mg) & (v <= p["top"] - mg) & (s > p["near"]) & (s <= limit)
+    m = (v >= p["bottom"] + margin_bottom(s, p)) & (v <= p["top"] - mg) & (s > p["near"]) & \
+        (s <= limit)
     if p.get("low_half") is None:
         return m & (au <= p["half"] - mg)
     low = v < p["v_step"]

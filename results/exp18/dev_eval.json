@@ -47,7 +47,7 @@
     }
    }
   },
-  "tlv_m8_a3": {
+  "final": {
    "false_raw": 0,
    "false_conf": 0,
    "objects": {
@@ -96,8 +96,8 @@
     }
    }
   },
-  "final": {
-   "false_raw": 0,
+  "final_b2": {
+   "false_raw": 2,
    "false_conf": 0,
    "objects": {
     "1": {
@@ -162,7 +162,7 @@
     }
    }
   },
-  "tlv_m8_a3": {
+  "final": {
    "false_raw": 1,
    "false_conf": 0,
    "objects": {
@@ -177,7 +177,7 @@
     }
    }
   },
-  "final": {
+  "final_b2": {
    "false_raw": 1,
    "false_conf": 0,
    "objects": {
@@ -209,22 +209,22 @@
     }
    }
   },
-  "tlv_m8_a3": {
-   "false_raw": 1,
+  "final": {
+   "false_raw": 0,
    "false_conf": 0,
    "objects": {
     "obstacle": {
      "pos": true,
      "n_raw": 69,
-     "n_conf": 60,
+     "n_conf": 55,
      "raw_max": 94.8093032836914,
-     "conf_max": 93.66215515136719,
-     "cont": 0.8769230769230769,
-     "gaps": 2
+     "conf_max": 92.51850128173828,
+     "cont": 0.8125,
+     "gaps": 4
     }
    }
   },
-  "final": {
+  "final_b2": {
    "false_raw": 0,
    "false_conf": 0,
    "objects": {
@@ -256,7 +256,7 @@
     }
    }
   },
-  "tlv_m8_a3": {
+  "final": {
    "false_raw": 0,
    "false_conf": 0,
    "objects": {
@@ -271,7 +271,7 @@
     }
    }
   },
-  "final": {
+  "final_b2": {
    "false_raw": 0,
    "false_conf": 0,
    "objects": {
@@ -292,6 +292,13 @@
    "false_raw": 0,
    "false_conf": 0,
    "objects": {
+    "box": {
+     "pos": true,
+     "n_raw": 0,
+     "n_conf": 0,
+     "raw_max": null,
+     "conf_max": null
+    },
     "person": {
      "pos": true,
      "n_raw": 57,
@@ -303,10 +310,17 @@
     }
    }
   },
-  "tlv_m8_a3": {
+  "final": {
    "false_raw": 0,
    "false_conf": 0,
    "objects": {
+    "box": {
+     "pos": true,
+     "n_raw": 0,
+     "n_conf": 0,
+     "raw_max": null,
+     "conf_max": null
+    },
     "person": {
      "pos": true,
      "n_raw": 63,
@@ -318,17 +332,26 @@
     }
    }
   },
-  "final": {
+  "final_b2": {
    "false_raw": 0,
    "false_conf": 0,
    "objects": {
+    "box": {
+     "pos": true,
+     "n_raw": 112,
+     "n_conf": 112,
+     "raw_max": 56.4,
+     "conf_max": 56.4,
+     "cont": 0.896,
+     "gaps": 12
+    },
     "person": {
      "pos": true,
-     "n_raw": 63,
-     "n_conf": 61,
+     "n_raw": 69,
+     "n_conf": 67,
      "raw_max": 55.5,
      "conf_max": 55.5,
-     "cont": 0.8472222222222222,
+     "cont": 0.9305555555555556,
      "gaps": 1
     }
    }
@@ -340,13 +363,13 @@
    "false_conf": 0,
    "objects": {}
   },
-  "tlv_m8_a3": {
+  "final": {
    "false_raw": 0,
    "false_conf": 0,
    "objects": {}
   },
-  "final": {
-   "false_raw": 0,
+  "final_b2": {
+   "false_raw": 2,
    "false_conf": 0,
    "objects": {}
   }
@@ -357,12 +380,12 @@
    "false_conf": 0,
    "objects": {}
   },
-  "tlv_m8_a3": {
-   "false_raw": 36,
-   "false_conf": 22,
+  "final": {
+   "false_raw": 34,
+   "false_conf": 24,
    "objects": {}
   },
-  "final": {
+  "final_b2": {
    "false_raw": 34,
    "false_conf": 24,
    "objects": {}
@@ -374,12 +397,12 @@
    "false_conf": 0,
    "objects": {}
   },
-  "tlv_m8_a3": {
+  "final": {
    "false_raw": 0,
    "false_conf": 0,
    "objects": {}
   },
-  "final": {
+  "final_b2": {
    "false_raw": 0,
    "false_conf": 0,
    "objects": {}
@@ -391,13 +414,13 @@
    "false_conf": 0,
    "objects": {}
   },
-  "tlv_m8_a3": {
+  "final": {
    "false_raw": 1,
    "false_conf": 0,
    "objects": {}
   },
-  "final": {
-   "false_raw": 1,
+  "final_b2": {
+   "false_raw": 2,
    "false_conf": 0,
    "objects": {}
   }

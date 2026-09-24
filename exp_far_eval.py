@@ -35,6 +35,10 @@ DEV = [("new_synth", "cloud_with_fake_obj"),
        ("Dataset", "doubleT_platform"), ("Dataset", "roundT_doubleT"),
        ("Dataset", "roundT_pressureGate_roundT"), ("Dataset", "squareT_platform_squareT_switch")]
 PERSON = (4, 75)        # doubleT_obstacle: человек на пути (§25)
+# doubleT_obstacle: коробка на левом рельсе (u −0.98…−0.70, верх 0.16–0.30 м), 56.4 м —
+# человек кладёт её на кадрах 30–45, лежит с кадра 50 до конца записи. Замечено
+# заказчиком после отложенного замера эксперимента 18, проверено по точкам.
+BOX = (50, 200, 56.4)
 NEAR_END = 5.0          # до какой дальности считается непрерывность
 
 
@@ -75,6 +79,9 @@ def truth_for(tag, bag, cols):
     elif bag == "doubleT_obstacle":
         for k in range(PERSON[0], PERSON[1] + 1):
             T[k].append((55.5, True, "person"))
+        for k in range(BOX[0], min(BOX[1] + 1, n)):
+            if k > PERSON[1]:
+                T[k].append((BOX[2], True, "box"))
     return T, S, s_cut
 
 
@@ -172,6 +179,8 @@ def summary(allres, variants):
         rf = " ".join(f"{r['false_conf']:4d}" if r else "   —" for r in real)
         ob = allres.get("doubleT_obstacle", {}).get(v)
         person = f"{ob['objects']['person']['n_conf']}/72" if ob else "—"
+        if ob and "box" in ob["objects"]:
+            person += f", коробка {ob['objects']['box']['n_conf']}/125"
         print(f"{v:16s} | {cell} | {sc} | {sf:4d} | {rf} | {person}")
 
 
