@@ -768,10 +768,17 @@ class WallParallelTracker:
         both = [v for v in reach_side.values() if v is not None]
         reach = float(max(both)) if both else None
         reach_now = max([v for v in now.values() if v is not None], default=None)
+        # Проигравшая гипотеза — только для сведения (эксперимент 18: где «память»
+        # и «заново» расходятся, путь вдали не определён); на выбор не влияет.
+        alt = None
+        if len(scored) > 1:
+            _, alt_origin, alt_st, alt_m, _ = scored[1]
+            alt = {"origin": alt_origin, "cost": scored[1][0],
+                   "curve": track_curve(alt_st.with_m(alt_m))}
         return {"state": self.st, "curve": curve, "edges": edges, "info": info,
                 "reach_side": reach_side, "reach": reach, "reach_now": reach_now,
                 "wall_from": wall_from, "ds": ds_use, "ds_measured": ds_ok,
-                "origin": origin, "cost": cost, "n_rails": int(len(rails[0]))}
+                "origin": origin, "cost": cost, "n_rails": int(len(rails[0])), "alt": alt}
 
 
 # ---------------------------------------------------------------- габарит

@@ -23,7 +23,7 @@ from pathlib import Path
 
 import numpy as np
 
-from exp_far_cache import load
+from exp_far_cache import SIDE_S, SIDE_V, load, side_view
 from exp_far_truth import track_length
 from rail_detection import far_detect as fd
 
@@ -39,7 +39,9 @@ NEAR_END = 5.0          # до какой дальности считается 
 
 
 def tol(d):
-    return max(2.0, 0.04 * d)
+    # 6%: сумма Δs трекера на New_synth за разгон уходит на ~5% (предмет 1:
+    # 98 м по находке на кадре 2 против 103 м по разметке вблизи)
+    return max(2.0, 0.06 * d)
 
 
 def truth_for(tag, bag, cols):
@@ -114,8 +116,12 @@ def run_variant(name, cols, pts):
             det.append((raw, conf))
         return det
     params = fd.VARIANTS[name]
+    getside = None
+    if "side" in cols:
+        getside = lambda k: (side_view(cols, k), SIDE_S, SIDE_V)
     det = fd.run_sequence(params, n, lambda k: pts(k) if cols["ok"][k] else None,
-                          cols["limit"], cols["ds"])
+                          cols["limit"], cols["ds"], getside=getside,
+                          alt_dx=cols.get("alt_dx"))
     return det
 
 
@@ -123,28 +129,70 @@ def fmt(v, f="{:.0f}"):
     return "—" if v is None else f.format(v)
 
 
+def _job(args):
+    tag, bag, v = args
+    cols, pts = load(CACHE / tag, bag)
+    return bag, v, score(tag, bag, cols, run_variant(v, cols, pts))
+
+
+REAL_CLEAN = ["doubleT_platform", "roundT_doubleT", "roundT_pressureGate_roundT",
+              "squareT_platform_squareT_switch"]
+SYN = ["box", "human_smashed", "human_smashed_diff_tunnels"]
+
+
+def summary(allres, variants):
+    """Одна строка на вариант: New_synth (предметы 1–4 — дальность подтверждения
+    и непрерывность, 5 — кадры с находкой, ложные), синтетика (дальность
+    подтверждения, ложные), реальные (ложные подтверждённые по прогонам, человек)."""
+    print(f"\n{'вариант':16s} | New_synth: 1 / 2 / 3 / 4 подтв. м (непр.) | 5 кадр | ложн | "
+          f"синт: box / hs / hsdt | ложн | реальн. ложн подтв: plat dbl gate sw obst | человек")
+    for v in variants:
+        ns = allres.get("cloud_with_fake_obj", {}).get(v)
+        cell = ""
+        if ns:
+            o = ns["objects"]
+            cell = " / ".join(f"{fmt(o[k]['conf_max'])}({fmt(o[k].get('cont'), '{:.2f}')})"
+                              for k in "1234" if k in o)
+            cell += f" | {o['5']['n_conf'] if '5' in o else '—':>4} | {ns['false_conf']:4d}"
+        syn = [allres.get(b, {}).get(v) for b in SYN]
+        sc = " / ".join(fmt(s["objects"]["obstacle"]["conf_max"]) if s else "—" for s in syn)
+        sf = sum(s["false_conf"] for s in syn if s)
+        real = [allres.get(b, {}).get(v) for b in REAL_CLEAN + ["doubleT_obstacle"]]
+        rf = " ".join(f"{r['false_conf']:4d}" if r else "   —" for r in real)
+        ob = allres.get("doubleT_obstacle", {}).get(v)
+        person = f"{ob['objects']['person']['n_conf']}/72" if ob else "—"
+        print(f"{v:16s} | {cell} | {sc} | {sf:4d} | {rf} | {person}")
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--variants", nargs="+", default=["base_cached"] + list(fd.VARIANTS))
     p.add_argument("--bags", nargs="+", default=None)
     p.add_argument("--json", default=None)
+    p.add_argument("--summary", action="store_true", help="только сводная таблица")
+    p.add_argument("--jobs", type=int, default=6)
     a = p.parse_args()
+    from concurrent.futures import ProcessPoolExecutor
+    jobs = [(tag, bag, v) for tag, bag in DEV if not a.bags or bag in a.bags
+            for v in a.variants]
     allres = {}
-    for tag, bag in DEV:
-        if a.bags and bag not in a.bags:
-            continue
-        cols, pts = load(CACHE / tag, bag)
-        print(f"\n=== {bag} ({len(cols['idx'])} кадров)")
-        for v in a.variants:
-            det = run_variant(v, cols, pts)
-            sc = score(tag, bag, cols, det)
+    with ProcessPoolExecutor(a.jobs) as ex:
+        for bag, v, sc in ex.map(_job, jobs):
             allres.setdefault(bag, {})[v] = sc
-            objs = "  ".join(
-                f"[{k}{'' if o['pos'] else ' (вне)'}: сыр {fmt(o['raw_max'])} / подтв "
-                f"{fmt(o['conf_max'])} м, {o['n_conf']} кадр"
-                + (f", непр {o['cont']:.2f}, провалов {o['gaps']}" if o.get("cont") is not None else "")
-                + "]" for k, o in sc["objects"].items())
-            print(f"  {v:14s} ложных: сырых {sc['false_raw']:4d}, подтв {sc['false_conf']:4d}   {objs}")
+    if not a.summary:
+        for tag, bag in DEV:
+            if bag not in allres:
+                continue
+            print(f"\n=== {bag}")
+            for v in a.variants:
+                sc = allres[bag][v]
+                objs = "  ".join(
+                    f"[{k}{'' if o['pos'] else ' (вне)'}: сыр {fmt(o['raw_max'])} / подтв "
+                    f"{fmt(o['conf_max'])} м, {o['n_conf']} кадр"
+                    + (f", непр {o['cont']:.2f}, провалов {o['gaps']}" if o.get("cont") is not None else "")
+                    + "]" for k, o in sc["objects"].items())
+                print(f"  {v:14s} ложных: сырых {sc['false_raw']:4d}, подтв {sc['false_conf']:4d}   {objs}")
+    summary(allres, a.variants)
     if a.json:
         Path(a.json).parent.mkdir(parents=True, exist_ok=True)
         with open(a.json, "w") as f:
