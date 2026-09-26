@@ -76,6 +76,10 @@ VARIANTS["final_x"] = {**FINAL, "alt_mode": "intersect", "alt_x_min": 25.0}
 VARIANTS["final_b2_f"] = {**VARIANTS["final_b2"], "vp_floor_ref": True}
 VARIANTS["final_b2_xf"] = {**VARIANTS["final_b2_x"], "vp_floor_ref": True}
 VARIANTS["final_xf"] = {**VARIANTS["final_x"], "vp_floor_ref": True}
+# Экспер. 21: низкие предметы — порог скопления от части предмета выше низа габарита.
+VARIANTS["low_rest"] = {**VARIANTS["final_b2_f"], "need_rest": True}
+VARIANTS["low_rest_b0"] = {**VARIANTS["final_b2_f"], "need_rest": True, "m_bottom_slope": 0.0}
+VARIANTS["final_b0_f"] = {**VARIANTS["final_b2_f"], "m_bottom_slope": 0.0}
 # Кандидат экспер. 20 (выбран на разработке до отложенного замера, заказчик —
 # 2026-09-26): final_b2 + пересечение габаритов гипотез + профиль от уровня пола;
 # трекер — с Δs по умолчанию (moving / median).
@@ -306,8 +310,13 @@ def clusters_far(s, u, v, p):
         m = lab == L
         c = small[m]
         D = float(c[:, 0].min())
+        h_exp = p["h_min"]
+        if p.get("need_rest"):
+            # экспер. 21: предмет h_min, стоящий на пути, заходит в габарит только
+            # частью выше его низа — от неё и ждать колец (не меньше одного)
+            h_exp = max(0.0, p["h_min"] - (p["bottom"] + float(np.max(margin_bottom(np.array([D]), p)))))
         need = min(p["min_points"], max(p["floor"],
-                                        p["frac"] * expected_hits(D, p["w_min"], p["h_min"])))
+                                        p["frac"] * expected_hits(D, p["w_min"], h_exp)))
         if m.sum() < need:
             continue
         size = c.max(axis=0) - c.min(axis=0)
