@@ -1,6 +1,10 @@
-rosbags
-numpy
-scipy
-matplotlib
-scikit-learn
-pillow
+# Версии, на которых сделаны и проверены все замеры (эксперименты 17–19).
+# numpy закреплён строго: rail_detection/fastops.py повторяет формулы numpy 2.0
+# до бита (перцентиль, пакетный lstsq) — с другой версией ответ может разойтись
+# незаметно; после смены версии — сверка `python exp_speed.py check --all`.
+rosbags==0.9.23
+numpy==2.0.2
+scipy==1.13.1
+matplotlib==3.9.4
+scikit-learn==1.6.1
+pillow==11.3.0
