@@ -76,6 +76,10 @@ VARIANTS["final_x"] = {**FINAL, "alt_mode": "intersect", "alt_x_min": 25.0}
 VARIANTS["final_b2_f"] = {**VARIANTS["final_b2"], "vp_floor_ref": True}
 VARIANTS["final_b2_xf"] = {**VARIANTS["final_b2_x"], "vp_floor_ref": True}
 VARIANTS["final_xf"] = {**VARIANTS["final_x"], "vp_floor_ref": True}
+# Кандидат экспер. 20 (выбран на разработке до отложенного замера, заказчик —
+# 2026-09-26): final_b2 + пересечение габаритов гипотез + профиль от уровня пола;
+# трекер — с Δs по умолчанию (moving / median).
+CANDIDATE = "final_b2_xf"
 VARIANTS["final_b0_xf"] = {**VARIANTS["final_b0"], "alt_mode": "intersect", "alt_x_min": 25.0,
                            "vp_floor_ref": True}
 for _r0 in (50, 100):
