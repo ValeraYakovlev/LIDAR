@@ -73,15 +73,29 @@ def gauge_centre(res, dd):
     return x_p + np.interp(arc, pg_, uc) / np.cos(psi), psi, arc
 
 
-def collect(dataset, bag, every, p, max_frames=None):
+def _extra_stat(idx, fr):
+    st = {"idx": idx, "ok": fr is not None}
+    if fr is not None:
+        st.update({"raw": [c["dist"] for c in fr["clusters"]], "conf": fr["confirmed"],
+                   "limit": fr["limit"]})
+    return st
+
+
+def collect(dataset, bag, every, p, max_frames=None, extra=()):
+    """extra — другие варианты детектора на том же проходе трекера: для них
+    пишутся только находки (экспер. 20: детектор дешёвый, трекер дорогой)."""
     pg = ParallelGauge()
     det = fd.FarDetector(p)
+    dets_x = {v: fd.FarDetector(fd.VARIANTS[v]) for v in extra}
+    stats_x = {v: [] for v in extra}
     rng = np.random.default_rng(0)
     recs, stats = [], []
     for idx, points, n_total in iter_frames(bag_path(dataset, bag), stride=1,
                                            max_frames=max_frames):
         res = pg.update(points, steps=1)
         fr = det.update(res)
+        for v, dx in dets_x.items():
+            stats_x[v].append(_extra_stat(idx, dx.update(res)))
         st = {"idx": idx, "ok": fr is not None}
         if fr is not None:
             st.update({"raw": [c["dist"] for c in fr["clusters"]], "conf": fr["confirmed"],
@@ -91,13 +105,15 @@ def collect(dataset, bag, every, p, max_frames=None):
                        # экспер. 20: путь для сверки с истинным (синтетика, /tf)
                        "cx": gauge_centre(res, CX_D)[0].tolist(),
                        "origin": res["track"]["origin"], "ds_meas": bool(res["track"]["ds_measured"]),
+                       "cost": res["track"]["cost"], "reach": res["reach"],
+                       "alt_cost": None if res["track"].get("alt") is None else res["track"]["alt"]["cost"],
                        "alt_dx": None if fr["alt_dx"] is None else fr["alt_dx"].tolist()})
         stats.append(st)
         if idx % every == 0:
             recs.append(_render_data(idx, n_total, res, fr, p, rng))
         print(f"\r  {bag}: кадр {idx}/{n_total}", end="", flush=True)
     print()
-    return recs, stats
+    return recs, stats, stats_x
 
 
 def _render_data(idx, n_total, res, fr, p, rng):
@@ -370,12 +386,17 @@ def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80, tpath=None):
     return images
 
 
-def build(dataset, bag, out_dir, target, fps, max_frames, variant, holdout_cut):
+def build(dataset, bag, out_dir, target, fps, max_frames, variant, holdout_cut, extra=()):
     p = fd.VARIANTS[variant]
     n = frame_count(bag_path(dataset, bag))
     every = max(1, round(n / target))
     print(f"\n=== {bag}: все {n} кадров, в GIF каждый {every}-й; вариант {variant} ===")
-    recs, stats = collect(dataset, bag, every, p, max_frames)
+    recs, stats, stats_x = collect(dataset, bag, every, p, max_frames, extra)
+    for v, sx in stats_x.items():
+        (out_dir / v).mkdir(parents=True, exist_ok=True)
+        with open(out_dir / v / f"{bag}.json", "w") as f:
+            json.dump({"bag": bag, "variant": v, "params": fd.VARIANTS[v], "stats": sx}, f,
+                      ensure_ascii=False, default=float)
     tag = "new_synth" if holdout_cut else Path(dataset).name
     truth, S, S_B = truth_tracks(tag, bag, stats)
     if holdout_cut:
@@ -415,11 +436,13 @@ def main():
                    help="New_synth: вырезать всё дальше S_B (разработка)")
     a.add_argument("--holdout", action="store_true",
                    help="отложенный замер: разрешить отложенные записи эксперимента 20")
+    a.add_argument("--extra-variants", nargs="*", default=[],
+                   help="ещё варианты детектора на том же проходе — только находки, в <out>/<вариант>/")
     args = a.parse_args()
     guard(args.bags, args.holdout)
     for bag in args.bags:
         build(args.dataset, bag, Path(args.out), args.target_frames, args.fps, args.max_frames,
-              args.variant, args.holdout_cut)
+              args.variant, args.holdout_cut, args.extra_variants)
 
 
 if __name__ == "__main__":

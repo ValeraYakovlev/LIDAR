@@ -151,6 +151,12 @@ DS_HISTORY = 5
 # после вычета рисунка, стоящего на лидаре (shift.ShiftMeter). Переопределяется
 # переменной окружения RAIL_DS_MODE — для сравнения вариантов в одном коде.
 DS_MODE = os.environ.get("RAIL_DS_MODE", "density")
+# Чем заменять неизмеренный (или отброшенный по DS_JUMP) Δs (экспер. 20): "last" —
+# последним принятым, как было; "median" — медианой последних DS_HISTORY принятых.
+# Одиночный неверный замер в пределах DS_JUMP при "last" везётся на все следующие
+# неизмеренные кадры (синтетика: 1.40 м вместо 1.67 пять кадров подряд — 1.6 м
+# ошибки положения узлов и предмета).
+DS_HOLD = os.environ.get("RAIL_DS_HOLD", "last")
 
 
 # ---------------------------------------------------------------- базис
@@ -742,6 +748,8 @@ class WallParallelTracker:
         if ds_ok:
             ds_use = self.last_ds = float(ds)
             self.ds_hist = (self.ds_hist + [ds_use])[-DS_HISTORY:]
+        elif DS_HOLD == "median" and self.ds_hist:
+            ds_use = float(np.median(self.ds_hist))
         else:
             ds_use = self.last_ds if self.last_ds is not None else 0.0
 

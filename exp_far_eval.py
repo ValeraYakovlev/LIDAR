@@ -52,6 +52,7 @@ def tol(d):
 
 
 HOLDOUT = False   # --holdout: New_synth — только отложенная часть (длина пути >= S_B)
+REF_S_NEW_SYNTH = Path("output/exp18_cache/new_synth/cloud_with_fake_obj.npz")
 
 
 def truth_for(tag, bag, cols):
@@ -62,6 +63,14 @@ def truth_for(tag, bag, cols):
     T = [[] for _ in range(n)]
     S = track_length(cols)
     s_cut = np.inf
+    if tag == "new_synth" and REF_S_NEW_SYNTH.exists():
+        # экспер. 20: положения предметов размечены по сумме Δs эталона (кэш
+        # экспер. 18); с другим измерителем Δs та же разметка — через ту же сумму,
+        # то есть «кадр -> дальность» не зависит от проверяемого варианта
+        z = np.load(REF_S_NEW_SYNTH)
+        S_ref = track_length({"ds": z["ds"]})
+        if len(S_ref) == n:
+            S = S_ref
     if tag == "new_synth":
         info = json.load(open("results/exp18/new_synth_objects.json"))
         s_cut = info["S_B"]

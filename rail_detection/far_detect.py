@@ -67,6 +67,11 @@ VARIANTS["final"] = FINAL
 # Экспер. 18б (после отложенного замера, им не проверено): запас снизу отдельно.
 for _kb in (0.0, 0.002, 0.004):
     VARIANTS[f"final_b{int(_kb * 1000)}"] = {**FINAL, "m_bottom_slope": _kb}
+# Экспер. 20: где гипотезы пути расходятся — пересечение их габаритов, а не обрыв пути.
+# Только если гипотезы согласны там, где путь держат рельсы (RAIL_MAX = 25 м, §31).
+VARIANTS["final_b2_x0"] = {**VARIANTS["final_b2"], "alt_mode": "intersect"}
+VARIANTS["final_b2_x"] = {**VARIANTS["final_b2"], "alt_mode": "intersect", "alt_x_min": 25.0}
+VARIANTS["final_x"] = {**FINAL, "alt_mode": "intersect", "alt_x_min": 25.0}
 for _r0 in (50, 100):
     for _k in (0.005, 0.008):
         VARIANTS[f"tl_r{_r0}_m{int(_k * 1000)}"] = {**BASE, **TRAIN_LOW, **FAR, "r0": float(_r0),
@@ -377,6 +382,35 @@ def alt_limit(alt_dx, lim):
     return float(ALT_D[bad[0]] - 10.0) if len(bad) else np.inf
 
 
+def gauge_mask_alt(s, u, v, lim, lim_alt, alt_dx, p):
+    """Габарит с учётом второй гипотезы пути (экспер. 20).
+
+    Ближе lim_alt («память» и «заново» расходятся меньше alt_max) — обычный
+    габарит. Дальше — пересечение габаритов обеих гипотез: точка считается в
+    габарите, только если она в нём при любом из двух путей. Раньше (§34) путь
+    здесь просто обрывался. Но в раструбе проигравшая гипотеза часто врёт на
+    метры, а выбранная верна (синтетика, замер по /tf), и обрыв прятал рабочего
+    на пути. Пересечение не пропускает ложную тревогу от ошибки пути, если
+    ошиблась одна гипотеза: для неё нужно, чтобы обе увели габарит в одну сторону.
+    alt_dx — поперечное расхождение (другая минус выбранная) на глубинах ALT_D."""
+    if alt_dx is None or not np.isfinite(lim_alt) or not np.isfinite(alt_dx).any():
+        return gauge_mask(s, u, v, lim, p)
+    if lim_alt < p.get("alt_x_min", 0.0):
+        # гипотезы расходятся уже там, где путь держат рельсы (до RAIL_MAX = 25 м):
+        # это не дальняя неопределённость, а сбой сцены (New_synth: поезд в 5 м
+        # перед блоком 2 × 2 м) — как в §34, путь обрывается
+        return gauge_mask(s, u, v, min(lim, lim_alt), p)
+    g = gauge_mask(s, u, v, lim, p)
+    far = s > lim_alt
+    if not far.any():
+        return g
+    dx = np.interp(s[far], ALT_D, np.nan_to_num(alt_dx))
+    g_far = gauge_mask(s[far], u[far] - dx, v[far], lim, p)
+    g = g.copy()
+    g[far] &= g_far
+    return g
+
+
 def run_sequence(p, n, getpts, limit, ds, getside=None, alt_dx=None):
     """Проход по записи: на кадр — (сырые дальности, подтверждённые дальности).
 
@@ -398,13 +432,20 @@ def run_sequence(p, n, getpts, limit, ds, getside=None, alt_dx=None):
             continue
         s, u, v = P
         lim = limit[k]
+        lim_alt = np.inf
         if p.get("alt_max") and alt_dx is not None:
-            lim = min(lim, alt_limit(alt_dx[k], p["alt_max"]))
+            lim_alt = alt_limit(alt_dx[k], p["alt_max"])
+            if p.get("alt_mode") != "intersect":
+                lim = min(lim, lim_alt)
         if p.get("vprof") and getside is not None:
             H, se, ve = getside(k)
-            delta, _ = vertical_profile(H, se, ve, lim)
+            # профиль по высоте — до прежнего предела и в режиме пересечения
+            delta, _ = vertical_profile(H, se, ve, min(lim, lim_alt))
             v = v - delta(s)
-        m = gauge_mask(s, u, v, lim, p)
+        if p.get("alt_mode") == "intersect" and alt_dx is not None:
+            m = gauge_mask_alt(s, u, v, lim, lim_alt, alt_dx[k], p)
+        else:
+            m = gauge_mask(s, u, v, lim, p)
         if p.get("far"):
             cl = clusters_far(s[m], u[m], v[m], p)
         else:
@@ -467,8 +508,11 @@ class FarDetector:
             a = to_path_dict(tr["alt"]["curve"], PATH_GRID, "")
             alt_dx = (np.interp(ALT_D, a["d"], a["x"])
                       - np.interp(ALT_D, res["path"]["d"], res["path"]["x"]))
+        lim_alt = np.inf
         if p.get("alt_max"):
-            lim = min(lim, alt_limit(alt_dx, p["alt_max"]))
+            lim_alt = alt_limit(alt_dx, p["alt_max"])
+            if p.get("alt_mode") != "intersect":
+                lim = min(lim, lim_alt)
         from . import parallel as par
 
         # вид сбоку и коробка друг от друга не зависят (экспер. 19)
@@ -477,14 +521,17 @@ class FarDetector:
             (s > BOX_S[0]) & (s <= BOX_S[1])
         vox = _voxel(np.column_stack([s[m], ug[m], vg[m]]))
         H = side_job.result()
-        delta, vinfo = vertical_profile(H, SIDE_S, SIDE_V, lim)
+        delta, vinfo = vertical_profile(H, SIDE_S, SIDE_V, min(lim, lim_alt))
         # те же float16, что в кэше: иначе на границе габарита расходятся точки
         S0 = vox[:, 0].astype(np.float32)
         U0 = vox[:, 1].astype(np.float16).astype(np.float32)
         V0 = vox[:, 2].astype(np.float16).astype(np.float32)
         dv = delta(S0) if p.get("vprof") else 0.0
         V1 = V0 - dv
-        g = gauge_mask(S0, U0, V1, lim, p)
+        if p.get("alt_mode") == "intersect":
+            g = gauge_mask_alt(S0, U0, V1, lim, lim_alt, alt_dx, p)
+        else:
+            g = gauge_mask(S0, U0, V1, lim, p)
         cl = clusters_far(S0[g], U0[g], V1[g], p)
         conf = self.watch.update(cl, tr["ds"])
         return {"clusters": cl, "confirmed": conf, "limit": lim, "alt_dx": alt_dx,
