@@ -60,6 +60,8 @@
 только свежий старт.
 """
 
+import os
+
 import numpy as np
 
 from .curvature import ransac_poly_fit
@@ -145,6 +147,10 @@ FRESH_WIDTH_SIGMA = 2.0   # м: слабый приор отступа у све
 # на такой Δs уводит ступеньки и кривизну на метр за кадр.
 DS_JUMP = 0.3
 DS_HISTORY = 5
+# Как мерить Δs (экспер. 20): "density" — профиль плотности §20; "moving" — он же
+# после вычета рисунка, стоящего на лидаре (shift.ShiftMeter). Переопределяется
+# переменной окружения RAIL_DS_MODE — для сравнения вариантов в одном коде.
+DS_MODE = os.environ.get("RAIL_DS_MODE", "density")
 
 
 # ---------------------------------------------------------------- базис
@@ -850,13 +856,18 @@ class ParallelGauge:
     вдоль нового пути. Всё, что не касается пути, намеренно не менялось:
     находки двух методов должны отличаться только из-за пути."""
 
-    def __init__(self, confirm=3):
+    def __init__(self, confirm=3, ds_mode=None):
         from .gauge import ObstacleWatch
+        from .shift import ShiftMeter
         self.tracker = WallParallelTracker()
         self.prior = None
         self.offset = 0.0
         self.prev_band = None
         self.watch = ObstacleWatch(confirm=confirm)
+        # экспер. 20: "moving" — Δs с вычетом рисунка, стоящего на лидаре (shift.ShiftMeter);
+        # "density" — прежний способ §20
+        self.ds_mode = ds_mode or DS_MODE
+        self.meter = ShiftMeter()
 
     def update(self, points, steps=1):
         from . import contrast_gauge as cg
@@ -898,6 +909,7 @@ class ParallelGauge:
             ref = to_path_dict(track_curve(self.tracker.st), cg.PATH_GRID, "")
         if ref is None:
             self.prev_band = None
+            self.meter.reset()
             self.watch.reset()
             self.tracker.reset()
             return None
@@ -914,7 +926,12 @@ class ParallelGauge:
         band_sel = (s0 > 2) & (s0 < 60)
         band = {"d": s0[band_sel], "u": u0[band_sel], "v": v0[band_sel]}
         shift = None
-        if self.prev_band is not None and len(band["d"]) > 500:
+        if self.ds_mode == "moving":
+            if len(band["d"]) > 500:
+                shift = self.meter.update(self.prev_band, band, max_shift=2.2 * max(steps, 1))
+            else:
+                self.meter.reset()
+        elif self.prev_band is not None and len(band["d"]) > 500:
             est = estimate_shift(self.prev_band, band, max_shift=2.2 * max(steps, 1))
             if est.get("ok"):
                 shift = float(est["shift"])

@@ -63,6 +63,16 @@ def gauge_poly(p, mg=0.0):
                      (-h, vs), (-lh, vs)])
 
 
+CX_D = np.arange(0.0, 151.0, 5.0)   # глубины, на которых в статистику пишется центр габарита
+
+
+def gauge_centre(res, dd):
+    """Центр габарита вбок на глубинах dd: путь плюс поправка позы вагона (uc)."""
+    x_p, psi, arc = path_at(res["path"], dd)
+    pg_, _, uc, _ = res["pose_curves"]
+    return x_p + np.interp(arc, pg_, uc) / np.cos(psi), psi, arc
+
+
 def collect(dataset, bag, every, p, max_frames=None):
     pg = ParallelGauge()
     det = fd.FarDetector(p)
@@ -77,7 +87,11 @@ def collect(dataset, bag, every, p, max_frames=None):
             st.update({"raw": [c["dist"] for c in fr["clusters"]], "conf": fr["confirmed"],
                        "ds": res["track"]["ds"], "limit": fr["limit"],
                        "clusters": fr["clusters"],
-                       "vp": [fr["vinfo"]["a"], fr["vinfo"]["b"]]})
+                       "vp": [fr["vinfo"]["a"], fr["vinfo"]["b"]],
+                       # экспер. 20: путь для сверки с истинным (синтетика, /tf)
+                       "cx": gauge_centre(res, CX_D)[0].tolist(),
+                       "origin": res["track"]["origin"], "ds_meas": bool(res["track"]["ds_measured"]),
+                       "alt_dx": None if fr["alt_dx"] is None else fr["alt_dx"].tolist()})
         stats.append(st)
         if idx % every == 0:
             recs.append(_render_data(idx, n_total, res, fr, p, rng))
@@ -93,9 +107,7 @@ def _render_data(idx, n_total, res, fr, p, rng):
     tr = res["track"]
     c = tr["curve"]
     dd = np.linspace(2, D_SHOW, 300)
-    x_p, psi, arc = path_at(res["path"], dd)
-    pg_, _, uc, _ = res["pose_curves"]
-    centre = x_p + np.interp(arc, pg_, uc) / np.cos(psi)
+    centre, psi, arc = gauge_centre(res, dd)
     half = p["half"] - fd.margin(arc, p) if p.get("m_slope") else np.full_like(arc, p["half"])
     half = np.maximum(half, 0.0)
     corridor = np.column_stack([centre - half / np.cos(psi), centre, centre + half / np.cos(psi), dd])
@@ -185,7 +197,7 @@ def truth_tracks(tag, bag, stats):
     return [], None, None
 
 
-def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80):
+def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80, tpath=None):
     xs = np.array([s["idx"] for s in stats], float)
     fig = Figure(figsize=(12.0, 9.2), dpi=dpi)
     canvas = FigureCanvasAgg(fig)
@@ -231,6 +243,15 @@ def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80):
             axT.plot(cr[vis, 1], cr[vis, 3], c="#d6336c", lw=1.2, ls="--", zorder=5)
             axT.plot(cr[vis, 0], cr[vis, 3], c="#d1495b", lw=1.4, zorder=5)
             axT.plot(cr[vis, 2], cr[vis, 3], c="#d1495b", lw=1.4, zorder=5)
+            if tpath is not None and r["idx"] < len(tpath[1]):
+                # экспер. 20: истинная ось пути (синтетика, по /tf) — алгоритм её не видит
+                tx = tpath[1][r["idx"]]
+                ok = np.isfinite(tx) & (tpath[0] >= 2.0) & (tpath[0] < vis_d)
+                axT.plot(tx[ok], tpath[0][ok], c="#1c7ed6", lw=1.0, alpha=0.9, zorder=5)
+                err = np.interp([50.0, 75.0, 100.0], cr[:, 3], cr[:, 1]) - \
+                    np.interp([50.0, 75.0, 100.0], tpath[0], tx, left=np.nan, right=np.nan)
+                head += "\nось габарита минус истинная на 50 / 75 / 100 м: " + \
+                    " / ".join("—" if not np.isfinite(e) else f"{e:+.2f}" for e in err) + " м (синяя — истинная)"
             h = r["hits"]
             h = h[h[:, 1] < vis_d] if len(h) else h
             if len(h):
@@ -361,7 +382,14 @@ def build(dataset, bag, out_dir, target, fps, max_frames, variant, holdout_cut):
         truth = [t for t in truth]
     else:
         S = S_B = None
-    images = render(recs, stats, bag, p, truth, S, S_B)
+    tp = Path(f"output/exp20_truth/{bag}.npz")
+    tpath = None
+    if tp.exists() and "last_synth" in str(dataset):
+        z = np.load(tp)
+        tpath = (z["D"], z["path_x"])
+        if "reversed" in str(dataset):
+            tpath = (z["D"], -z["path_x"])
+    images = render(recs, stats, bag, p, truth, S, S_B, tpath=tpath)
     out_dir.mkdir(parents=True, exist_ok=True)
     suffix = "_dev" if holdout_cut else ""
     path = out_dir / f"{bag}{suffix}.gif"
