@@ -23,14 +23,23 @@ def to_numpy(msg):
     return np.frombuffer(msg.data, dtype=dt, count=msg.width * msg.height)
 
 def process_bag(bag_dir):
-    print(f"[{os.path.basename(bag_dir)}] Начало обработки...")
+    bag_name = os.path.basename(bag_dir)
+    out_file = os.path.join(OUT_DIR, f"{bag_name}.npz")
+    if os.path.exists(out_file):
+        print(f"[{bag_name}] Уже обработано, пропускаем.")
+        return
+        
+    print(f"[{bag_name}] Начало обработки...")
     mcap_files = glob.glob(os.path.join(bag_dir, "mcap", "*.mcap"))
-    db3_files = glob.glob(os.path.join(bag_dir, "db3", "*.db3"))
+    db3_files = glob.glob(os.path.join(bag_dir, "db3", "*.db3")) + glob.glob(os.path.join(bag_dir, "*.db3"))
     if not mcap_files and not db3_files:
         print(f"[{os.path.basename(bag_dir)}] Не найден ни mcap, ни db3 файл")
         return
     
     labels_file = os.path.join(bag_dir, "yaml", "labels.json")
+    if not os.path.exists(labels_file):
+        labels_file = os.path.join(bag_dir, "labels.json")
+    
     if not os.path.exists(labels_file):
         print(f"[{os.path.basename(bag_dir)}] Не найден labels.json")
         return
@@ -103,7 +112,17 @@ def process_bag(bag_dir):
             v = res["v"]
             
             # Выделяем точки, попавшие внутрь статической зоны габарита
-            mask = (u >= u_min) & (u <= u_max) & (v >= v_min) & (v <= v_max) & (s > 0)
+            from scipy.spatial import cKDTree
+            ref_mask = (s >= 0.0) & (s <= 3.0)
+            if np.sum(ref_mask) > 100:
+                pts_2d_ref = np.column_stack((u[ref_mask], v[ref_mask]))
+                ref_kdtree = cKDTree(pts_2d_ref)
+                pts_all_2d = np.column_stack((u, v))
+                dist_to_wall, _ = ref_kdtree.query(pts_all_2d)
+                wall_mask = dist_to_wall > 0.15
+            else:
+                wall_mask = np.ones_like(s, dtype=bool)
+            mask = (u >= u_min) & (u <= u_max) & (v >= v_min) & (v <= v_max) & (s > 0) & wall_mask
             s_val = s[mask]
             u_val = u[mask]
             v_val = v[mask]
