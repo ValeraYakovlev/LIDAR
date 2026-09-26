@@ -208,7 +208,9 @@ validation_run_v6.json  — roundT_squareT_pressureGate_squareT ЦЕЛИКОМ, 
 `speed-ref` на 15 записях и на замороженной New_synth. Включается переменными
 `RAIL_WORKERS=4 RAIL_PROCESS=1` (или `parallel.set_workers(4)`,
 `parallel.set_process(True)`); по умолчанию всё последовательно. Процессы
-лучше запускать заранее — `parallel.start_helpers()`.
+лучше запускать заранее — `parallel.start_helpers()`. Запускающий скрипт в
+режиме процессов обязан иметь `if __name__ == "__main__":` (процессы
+стартуют через spawn и заново выполняют главный модуль).
 
 ## Как метод развивался (rail_detection/tunnel_frame.py, §15–§22)
 
