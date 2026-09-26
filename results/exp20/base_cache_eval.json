@@ -1,0 +1,294 @@
+{
+ "cloud_with_fake_obj": {
+  "final": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {
+    "1": {
+     "pos": true,
+     "n_raw": 222,
+     "n_conf": 220,
+     "raw_max": 103.0,
+     "conf_max": 102.69983266007183,
+     "cont": 0.9821428571428571,
+     "gaps": 1
+    },
+    "2": {
+     "pos": true,
+     "n_raw": 37,
+     "n_conf": 32,
+     "raw_max": 65.98718835488197,
+     "conf_max": 62.648315564348906,
+     "cont": 0.8857142857142857,
+     "gaps": 4
+    },
+    "3": {
+     "pos": true,
+     "n_raw": 34,
+     "n_conf": 32,
+     "raw_max": 64.07474458149204,
+     "conf_max": 58.7694093690024,
+     "cont": 1.0,
+     "gaps": 0
+    },
+    "4": {
+     "pos": true,
+     "n_raw": 27,
+     "n_conf": 24,
+     "raw_max": 58.85926159595516,
+     "conf_max": 46.02713527102355,
+     "cont": 1.0,
+     "gaps": 0
+    },
+    "5": {
+     "pos": false,
+     "n_raw": 37,
+     "n_conf": 32,
+     "raw_max": 78.69501260387369,
+     "conf_max": 63.511864877616745
+    }
+   }
+  },
+  "final_b2": {
+   "false_raw": 2,
+   "false_conf": 0,
+   "objects": {
+    "1": {
+     "pos": true,
+     "n_raw": 222,
+     "n_conf": 220,
+     "raw_max": 103.0,
+     "conf_max": 102.69983266007183,
+     "cont": 0.9821428571428571,
+     "gaps": 1
+    },
+    "2": {
+     "pos": true,
+     "n_raw": 37,
+     "n_conf": 32,
+     "raw_max": 65.98718835488197,
+     "conf_max": 62.648315564348906,
+     "cont": 0.8857142857142857,
+     "gaps": 4
+    },
+    "3": {
+     "pos": true,
+     "n_raw": 34,
+     "n_conf": 32,
+     "raw_max": 64.07474458149204,
+     "conf_max": 58.7694093690024,
+     "cont": 1.0,
+     "gaps": 0
+    },
+    "4": {
+     "pos": true,
+     "n_raw": 27,
+     "n_conf": 24,
+     "raw_max": 58.85926159595516,
+     "conf_max": 46.02713527102355,
+     "cont": 1.0,
+     "gaps": 0
+    },
+    "5": {
+     "pos": false,
+     "n_raw": 37,
+     "n_conf": 32,
+     "raw_max": 78.69501260387369,
+     "conf_max": 63.511864877616745
+    }
+   }
+  }
+ },
+ "box": {
+  "final": {
+   "false_raw": 1,
+   "false_conf": 0,
+   "objects": {
+    "obstacle": {
+     "pos": true,
+     "n_raw": 55,
+     "n_conf": 54,
+     "raw_max": 68.4134292602539,
+     "conf_max": 67.18378448486328,
+     "cont": 1.0,
+     "gaps": 0
+    }
+   }
+  },
+  "final_b2": {
+   "false_raw": 1,
+   "false_conf": 0,
+   "objects": {
+    "obstacle": {
+     "pos": true,
+     "n_raw": 55,
+     "n_conf": 54,
+     "raw_max": 68.4134292602539,
+     "conf_max": 67.18378448486328,
+     "cont": 1.0,
+     "gaps": 0
+    }
+   }
+  }
+ },
+ "human_smashed": {
+  "final": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {
+    "obstacle": {
+     "pos": true,
+     "n_raw": 69,
+     "n_conf": 55,
+     "raw_max": 94.8093032836914,
+     "conf_max": 92.51850128173828,
+     "cont": 0.8125,
+     "gaps": 4
+    }
+   }
+  },
+  "final_b2": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {
+    "obstacle": {
+     "pos": true,
+     "n_raw": 69,
+     "n_conf": 55,
+     "raw_max": 94.8093032836914,
+     "conf_max": 92.51850128173828,
+     "cont": 0.8125,
+     "gaps": 4
+    }
+   }
+  }
+ },
+ "human_smashed_diff_tunnels": {
+  "final": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {
+    "obstacle": {
+     "pos": true,
+     "n_raw": 62,
+     "n_conf": 60,
+     "raw_max": 86.65421295166016,
+     "conf_max": 83.89879608154297,
+     "cont": 1.0,
+     "gaps": 0
+    }
+   }
+  },
+  "final_b2": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {
+    "obstacle": {
+     "pos": true,
+     "n_raw": 62,
+     "n_conf": 60,
+     "raw_max": 86.65421295166016,
+     "conf_max": 83.89879608154297,
+     "cont": 1.0,
+     "gaps": 0
+    }
+   }
+  }
+ },
+ "doubleT_obstacle": {
+  "final": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {
+    "box": {
+     "pos": true,
+     "n_raw": 0,
+     "n_conf": 0,
+     "raw_max": null,
+     "conf_max": null
+    },
+    "person": {
+     "pos": true,
+     "n_raw": 63,
+     "n_conf": 61,
+     "raw_max": 55.5,
+     "conf_max": 55.5,
+     "cont": 0.8472222222222222,
+     "gaps": 1
+    }
+   }
+  },
+  "final_b2": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {
+    "box": {
+     "pos": true,
+     "n_raw": 112,
+     "n_conf": 112,
+     "raw_max": 56.4,
+     "conf_max": 56.4,
+     "cont": 0.896,
+     "gaps": 12
+    },
+    "person": {
+     "pos": true,
+     "n_raw": 69,
+     "n_conf": 67,
+     "raw_max": 55.5,
+     "conf_max": 55.5,
+     "cont": 0.9305555555555556,
+     "gaps": 1
+    }
+   }
+  }
+ },
+ "doubleT_platform": {
+  "final": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {}
+  },
+  "final_b2": {
+   "false_raw": 2,
+   "false_conf": 0,
+   "objects": {}
+  }
+ },
+ "roundT_pressureGate_roundT": {
+  "final": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {}
+  },
+  "final_b2": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {}
+  }
+ },
+ "squareT_platform_squareT_switch": {
+  "final": {
+   "false_raw": 1,
+   "false_conf": 0,
+   "objects": {}
+  },
+  "final_b2": {
+   "false_raw": 2,
+   "false_conf": 0,
+   "objects": {}
+  }
+ },
+ "roundT_squareT_pressureGate_squareT": {
+  "final": {
+   "false_raw": 0,
+   "false_conf": 0,
+   "objects": {}
+  },
+  "final_b2": {
+   "false_raw": 17,
+   "false_conf": 6,
+   "objects": {}
+  }
+ }
+}
