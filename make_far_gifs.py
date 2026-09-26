@@ -53,9 +53,10 @@ N_SLICE = 6000
 DEFAULT_SLICE = 60.0
 
 
-def gauge_poly(p, mg=0.0):
-    """Контур габарита в (u, v) — с вырезом под контактный рельс и запасом mg."""
-    h, top, b = p["half"] - mg, p["top"] - mg, p["bottom"] + mg
+def gauge_poly(p, mg=0.0, mgb=None):
+    """Контур габарита в (u, v) — с вырезом под контактный рельс и запасом mg
+    (снизу — mgb, если у варианта свой запас снизу, §34 18б)."""
+    h, top, b = p["half"] - mg, p["top"] - mg, p["bottom"] + (mg if mgb is None else mgb)
     if p.get("low_half") is None:
         return np.array([(-h, b), (h, b), (h, top), (-h, top)])
     lh, vs = p["low_half"] - mg, p["v_step"]
@@ -170,6 +171,7 @@ def _render_data(idx, n_total, res, fr, p, rng):
         "slice": np.column_stack([ug[sel], vv[sel]]).astype(np.float32),
         "slice_dist": float(dist), "slice_ht": float(ht),
         "mg": float(fd.margin(np.array([dist]), p)[0]) if p.get("m_slope") else 0.0,
+        "mgb": float(np.max(fd.margin_bottom(np.array([dist]), p))) if p.get("m_slope") else 0.0,
         "side": fr["side"].astype(np.float32), "levels": fr["vinfo"]["levels"],
         "h_ceil": fr["vinfo"]["h_ceil"],
         "prof": (ss, fr["delta"](ss) if fr["delta"] is not None else np.zeros_like(ss)),
@@ -299,12 +301,12 @@ def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80, tpath=None):
                 sl = r["slice"]
                 axS.scatter(sl[:, 0], sl[:, 1], s=2.0, c="#9aa5b1", alpha=0.6, linewidths=0)
                 poly = gauge_poly(p)
-                inside = matplotlib.path.Path(gauge_poly(p, r["mg"])).contains_points(sl)
+                inside = matplotlib.path.Path(gauge_poly(p, r["mg"], r["mgb"])).contains_points(sl)
                 if inside.any():
                     axS.scatter(sl[inside, 0], sl[inside, 1], s=6, c="#d1495b", linewidths=0)
                 axS.add_patch(Polygon(poly, closed=True, fill=False, edgecolor="#d1495b", lw=1.6))
                 if r["mg"] > 0.005:
-                    axS.add_patch(Polygon(gauge_poly(p, r["mg"]), closed=True, fill=False,
+                    axS.add_patch(Polygon(gauge_poly(p, r["mg"], r["mgb"]), closed=True, fill=False,
                                           edgecolor="#d1495b", lw=1.0, ls="--"))
                 axS.set_title(f"плоскость ⊥ пути на {r['slice_dist']:.0f} м (±{r['slice_ht']:.1f} м); "
                               f"пунктир — габарит, сжатый на запас {r['mg']:.2f} м", fontsize=8)
@@ -332,7 +334,8 @@ def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80, tpath=None):
             axV.plot(ss[keep], dlt[keep], c="#ffd43b", lw=1.6)
             mgv = fd.margin(ss, p) if p.get("m_slope") else 0 * ss
             axV.plot(ss[keep], (dlt + p["top"] - mgv)[keep], c="#51cf66", lw=1.0)
-            axV.plot(ss[keep], (dlt + p["bottom"] + mgv)[keep], c="#51cf66", lw=1.0)
+            mgvb = np.broadcast_to(fd.margin_bottom(ss, p), ss.shape) if p.get("m_slope") else 0 * ss
+            axV.plot(ss[keep], (dlt + p["bottom"] + mgvb)[keep], c="#51cf66", lw=1.0)
             L = r["levels"]
             kl = L[:, 0] < c
             axV.scatter(L[kl, 0], L[kl, 1], s=8, c="#74c0fc", zorder=5)
