@@ -429,6 +429,13 @@ SIDE_S = np.arange(0.0, 156.0, 1.0)
 SIDE_V = np.arange(-2.0, 6.55, 0.05)
 
 
+def _side_view(s, ug, vg):
+    """Гистограмма вида сбоку (s, v) полосы |u| <= SIDE_U."""
+    ms = np.abs(ug) <= SIDE_U
+    H, _, _ = np.histogram2d(s[ms], vg[ms], bins=[SIDE_S, SIDE_V])
+    return H
+
+
 class FarDetector:
     """Габарит, скопления и подтверждение эксперимента 18 поверх `ParallelGauge`.
 
@@ -462,12 +469,15 @@ class FarDetector:
                       - np.interp(ALT_D, res["path"]["d"], res["path"]["x"]))
         if p.get("alt_max"):
             lim = min(lim, alt_limit(alt_dx, p["alt_max"]))
-        ms = np.abs(ug) <= SIDE_U
-        H, _, _ = np.histogram2d(s[ms], vg[ms], bins=[SIDE_S, SIDE_V])
-        delta, vinfo = vertical_profile(H, SIDE_S, SIDE_V, lim)
+        from . import parallel as par
+
+        # вид сбоку и коробка друг от друга не зависят (экспер. 19)
+        side_job = par.submit(_side_view, s, ug, vg)
         m = (np.abs(ug) <= BOX_U) & (vg >= BOX_V[0]) & (vg <= BOX_V[1]) & \
             (s > BOX_S[0]) & (s <= BOX_S[1])
         vox = _voxel(np.column_stack([s[m], ug[m], vg[m]]))
+        H = side_job.result()
+        delta, vinfo = vertical_profile(H, SIDE_S, SIDE_V, lim)
         # те же float16, что в кэше: иначе на границе габарита расходятся точки
         S0 = vox[:, 0].astype(np.float32)
         U0 = vox[:, 1].astype(np.float16).astype(np.float32)

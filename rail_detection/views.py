@@ -25,6 +25,8 @@
 import numpy as np
 from scipy import ndimage
 
+from .fastops import group_percentile, lstsq_batch
+
 CELL_X = 0.10       # м, клетка сетки поперёк
 CELL_D = 0.50       # м, клетка сетки вдоль
 X_HALF = 16.0       # м, сетка по x: [-X_HALF, X_HALF]
@@ -107,11 +109,18 @@ def contrast_image(grid, ref_pct=75.0, ref_window=4.0):
     nd = count.shape[0]
     half = max(1, int(round(ref_window / 2 / grid["cell_d"])))
     ref = np.ones(nd)
-    for i in range(nd):
-        blk = count[max(0, i - half):i + half + 1]
-        nz = blk[blk > 0]
-        if len(nz):
-            ref[i] = max(np.percentile(nz, ref_pct), 1.0)
+    # Окно строки i — строки [i − half, i + half]; занятая клетка строки r входит
+    # в окна r − half … r + half. Перцентили всех окон — одним проходом
+    # (экспер. 19: раньше np.percentile на каждую строку), ответ тот же.
+    rows, cols = np.nonzero(count > 0)
+    vals = count[rows, cols]
+    off = np.arange(-half, half + 1)
+    win = (rows[None, :] + off[:, None]).ravel()
+    vv = np.broadcast_to(vals, (len(off), len(vals))).ravel()
+    ok = (win >= 0) & (win < nd)
+    pct = group_percentile(vv[ok], win[ok], nd, ref_pct)
+    has = ~np.isnan(pct)
+    ref[has] = np.maximum(pct[has], 1.0)
     img = np.log1p(count) / np.log1p(ref)[:, None]
     return np.clip(img, 0.0, 1.0)
 
@@ -421,6 +430,87 @@ def _msac(resid, w, tol):
     return float(np.sum(w * np.minimum(resid ** 2, tol ** 2)) / max(w.sum(), 1e-9))
 
 
+def _choice_no_replace(p, k, take):
+    """rng.choice(len(p), k, replace=False, p=p) — тот же алгоритм numpy, что и
+    в Generator.choice (отбор с повторной выборкой совпавших), на равномерных
+    числах take(m) из того же потока. Возвращает индексы."""
+    p = p.copy()
+    found = np.zeros(k, np.int64)
+    n_uniq = 0
+    while n_uniq < k:
+        u = take(k - n_uniq)
+        if n_uniq > 0:
+            p[found[:n_uniq]] = 0
+        cdf = np.cumsum(p)
+        cdf /= cdf[-1]
+        new = cdf.searchsorted(u, side="right")
+        _, first = np.unique(new, return_index=True)
+        first.sort()
+        new = new.take(first)
+        found[n_uniq:n_uniq + new.size] = new
+        n_uniq += new.size
+    return found
+
+
+def _ransac_draws(rng, prob, idx_by, k_rest, n_hyp):
+    """Случайные выборки всех гипотез RANSAC разом — те же, что давал цикл
+
+        pick = [rng.choice(ix, p=prob[ix] / prob[ix].sum()) for ix in idx_by]
+        rest = rng.choice(len(prob), k_rest, replace=False, p=prob)
+
+    (экспер. 19: цикл занимал ~30 мс на степень). Generator.choice с весами
+    берёт равномерное число из потока и ищет его в накопленной сумме весов, а
+    без возвращения — повторяет выборку для совпавших. Поток читается пачкой
+    (random(N) даёт ровно те же числа, что N вызовов подряд), гипотезы без
+    совпадений внутри «остатка» считаются массивом, а редкие с совпадением —
+    точным повтором алгоритма numpy, со сдвигом дальнейшего потока.
+    """
+    n_sets = len(idx_by)
+    per = n_sets + k_rest
+    cdf_set = []
+    for ix in idx_by:
+        q = prob[ix] / prob[ix].sum()
+        c = q.cumsum()
+        c /= c[-1]
+        cdf_set.append(c)
+    cdf_all = np.cumsum(prob)
+    cdf_all /= cdf_all[-1]
+    buf = [rng.random(n_hyp * per + 64)]
+    pos = 0
+
+    def take(m):
+        nonlocal pos
+        while pos + m > len(buf[0]):
+            buf[0] = np.concatenate([buf[0], rng.random(max(m, 64))])
+        out = buf[0][pos:pos + m]
+        pos += m
+        return out
+
+    picks = np.zeros((n_hyp, n_sets), np.int64)
+    rests = np.zeros((n_hyp, k_rest), np.int64)
+    h = 0
+    while h < n_hyp:
+        m = n_hyp - h
+        blk = take(m * per).reshape(m, per)
+        P = np.column_stack([ix[c.searchsorted(blk[:, j], side="right")]
+                             for j, (ix, c) in enumerate(zip(idx_by, cdf_set))])
+        R = cdf_all.searchsorted(blk[:, n_sets:], side="right")
+        Rs = np.sort(R, axis=1)
+        dup = np.flatnonzero(np.any(Rs[:, 1:] == Rs[:, :-1], axis=1)) if k_rest > 1 else []
+        ok = m if len(dup) == 0 else int(dup[0])
+        picks[h:h + ok] = P[:ok]
+        rests[h:h + ok] = R[:ok]
+        # вернуть в поток всё, что взято сверх принятых гипотез
+        pos -= (m - ok) * per
+        h += ok
+        if h < n_hyp:
+            picks[h] = P[ok]
+            pos += n_sets
+            rests[h] = _choice_no_replace(prob, k_rest, take)
+            h += 1
+    return picks, rests
+
+
 def _ransac(d, x, w, sid, n_sets, sides, deg, tol, n_hyp=400, seed=0):
     """Старт подгонки: гипотезы по минимальным выборкам, у каждой — наблюдаемая
     кромка с учётом заслона, побеждает наименьшая MSAC-цена. Нужен потому, что
@@ -434,21 +524,16 @@ def _ransac(d, x, w, sid, n_sets, sides, deg, tol, n_hyp=400, seed=0):
     # поворот, почти не выпадают.
     prob = w / w.sum()
     idx_by = [np.where(sid == k)[0] for k in range(n_sets)]
-    hyps = []
-    for _ in range(n_hyp):
-        pick = [rng.choice(ix, p=prob[ix] / prob[ix].sum()) for ix in idx_by]
-        rest = rng.choice(len(d), p - len(pick), replace=False, p=prob)
-        sel = np.unique(np.r_[pick, rest])
-        if len(sel) < p:
-            continue
-        # по глубине выборка должна быть разнесена, иначе кривизна — шум
-        if np.ptp(d[sel]) < 10.0:
-            continue
-        c, *_ = np.linalg.lstsq(A[sel], x[sel], rcond=None)
-        hyps.append(c)
-    if not hyps:
+    picks, rests = _ransac_draws(rng, prob, idx_by, p - n_sets, n_hyp)
+    S = np.sort(np.column_stack([picks, rests]), axis=1)
+    distinct = np.all(S[:, 1:] != S[:, :-1], axis=1)
+    dd = d[S]
+    # по глубине выборка должна быть разнесена, иначе кривизна — шум
+    spread = (dd.max(axis=1) - dd.min(axis=1)) >= 10.0
+    good = S[distinct & spread]
+    if not len(good):
         return None
-    H = np.array(hyps)
+    H = lstsq_batch(A[good], x[good])
     pred, _ = _observed_edge(H, n_sets, sid, d, sides)
     cost = np.sum(w[None, :] * np.minimum((x[None, :] - pred) ** 2, tol ** 2), axis=1)
     return H[int(np.argmin(cost))]
@@ -491,6 +576,19 @@ def _chain_reach(depths, support=2):
     return None
 
 
+def _fit_degree(d, x, w, sid, n_sets, sides, deg, tol):
+    """Подгонка формы одной степени: старт RANSAC, Тьюки, цена по наблюдаемой
+    кромке. None — гипотез не нашлось."""
+    coef = _ransac(d, x, w, sid, n_sets, sides, deg, tol)
+    if coef is None:
+        return None
+    coef = _refine(d, x, w, sid, n_sets, sides, coef)
+    pred, hid = _observed_edge(coef, n_sets, sid, d, sides)
+    r = x - pred[0]
+    cost = _msac(r, w, tol)
+    return {"deg": deg, "coef": coef, "resid": r, "hidden": hid[0], "cost": cost}
+
+
 def fit_shared_shape(d_left, x_left, d_right, x_right, w_left=None, w_right=None,
                      max_deg=3, gain=0.85, tol=0.25, min_samples=10):
     """Обе кромки — одной формой: x = смещение_стороны + Σ a_j (d/50)^j.
@@ -525,23 +623,29 @@ def fit_shared_shape(d_left, x_left, d_right, x_right, w_left=None, w_right=None
         n_sets, sides = 1, (sides_all[keep],)
     if len(d) < min_samples:
         return None
-    best = None
+    from . import parallel as par
+
+    degs = []
     for deg in range(1, max_deg + 1):
         # кубике нужна длинная база: иначе она объясняет шум, а не S-кривую
         if deg == 3 and np.percentile(d, 90) < 60:
             break
-        coef = _ransac(d, x, w, sid, n_sets, sides, deg, tol)
-        if coef is None:
+        degs.append(deg)
+    # Степени подгоняются независимо: при распараллеливании вторая и третья — в
+    # отдельных процессах, пока здесь считается первая (экспер. 19). Выбор —
+    # тот же, по порядку степеней.
+    jobs = {deg: par.submit_to(deg - 1, _fit_degree, d, x, w, sid, n_sets, sides, deg, tol)
+            for deg in degs[1:]}
+    best = None
+    for deg in degs:
+        cand = (_fit_degree(d, x, w, sid, n_sets, sides, deg, tol) if deg == degs[0]
+                else jobs[deg].result())
+        if cand is None:
             continue
-        coef = _refine(d, x, w, sid, n_sets, sides, coef)
-        pred, hid = _observed_edge(coef, n_sets, sid, d, sides)
-        r = x - pred[0]
-        cost = _msac(r, w, tol)
-        cand = {"deg": deg, "coef": coef, "resid": r, "hidden": hid[0], "cost": cost}
         # Без досрочной остановки: «прямо вдоль платформы, потом поворот» дуга
         # описывает не лучше прямой, а кубика — хорошо. Если остановиться на
         # первой неудачной степени, до кубики дело не дойдёт.
-        if best is None or cost < gain * best["cost"]:
+        if best is None or cand["cost"] < gain * best["cost"]:
             best = cand
     if best is None:
         return None

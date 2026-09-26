@@ -14,6 +14,34 @@ import numpy as np
 from .tracking import robust_centerline
 
 
+def _best_hypothesis(depths, xs, idxs, degree, threshold):
+    """Та же гипотеза, что выбирал цикл `np.polyfit` → `np.polyval` → подсчёт
+    согласных (первая с наибольшим числом), но для всех выборок разом
+    (экспер. 19). Повторяет np.polyfit по шагам: матрица Вандермонда
+    накопленным произведением, масштаб столбцов, тот же lstsq с
+    rcond = len(x)·eps; np.polyval — схемой Горнера."""
+    from .fastops import lstsq_batch
+
+    order = degree + 1
+    X = depths[idxs] + 0.0
+    Y = xs[idxs] + 0.0
+    k, m = X.shape
+    V = np.empty((k, m, order))
+    tmp = V[:, :, ::-1]
+    tmp[:, :, 0] = 1
+    if order > 1:
+        tmp[:, :, 1:] = X[:, :, None]
+        np.multiply.accumulate(tmp[:, :, 1:], out=tmp[:, :, 1:], axis=2)
+    scale = np.sqrt((V * V).sum(axis=1))
+    V /= scale[:, None, :]
+    C = lstsq_batch(V, Y, rcond=m * np.finfo(float).eps) / scale
+    P = np.zeros((k, len(depths)))
+    for j in range(order):
+        P = P * depths[None, :] + C[:, j:j + 1]
+    inl = np.abs(P - xs[None, :]) < threshold
+    return inl[int(np.argmax(inl.sum(axis=1)))]
+
+
 def ransac_poly_fit(depths, xs, degree, threshold, n_iter=300, min_inlier_frac=0.6, seed=0):
     """RANSAC-подгонка полинома степени degree к (depths, xs), устойчивая к
     выбросам среди отдельных срезов (один плохой срез не должен портить всю
@@ -30,18 +58,21 @@ def ransac_poly_fit(depths, xs, degree, threshold, n_iter=300, min_inlier_frac=0
     if n < min_sample:
         return None
     rng = np.random.default_rng(seed)
-    best_inliers, best_count = None, -1
-    for _ in range(n_iter):
-        idx = rng.choice(n, size=min_sample, replace=False)
-        try:
-            c = np.polyfit(depths[idx], xs[idx], degree)
-        except np.linalg.LinAlgError:
-            continue
-        resid = np.abs(np.polyval(c, depths) - xs)
-        inliers = resid < threshold
-        count = int(inliers.sum())
-        if count > best_count:
-            best_count, best_inliers = count, inliers
+    idxs = np.array([rng.choice(n, size=min_sample, replace=False) for _ in range(n_iter)])
+    try:
+        best_inliers = _best_hypothesis(depths, xs, idxs, degree, threshold)
+    except np.linalg.LinAlgError:
+        best_inliers, best_count = None, -1
+        for idx in idxs:
+            try:
+                c = np.polyfit(depths[idx], xs[idx], degree)
+            except np.linalg.LinAlgError:
+                continue
+            resid = np.abs(np.polyval(c, depths) - xs)
+            inliers = resid < threshold
+            count = int(inliers.sum())
+            if count > best_count:
+                best_count, best_inliers = count, inliers
     if best_inliers is None or best_inliers.sum() < max(min_sample, min_inlier_frac * n):
         return None
     coeffs = np.polyfit(depths[best_inliers], xs[best_inliers], degree)

@@ -1,0 +1,15 @@
+Dataset/doubleT_platform: СОВПАЛО, 345 кадров, 79 с
+Dataset/roundT_doubleT: СОВПАЛО, 252 кадров, 60 с
+Dataset/roundT_pressureGate_roundT: СОВПАЛО, 268 кадров, 59 с
+Dataset/roundT_squareT_pressureGate_squareT: СОВПАЛО, 545 кадров, 204 с
+Dataset/squareT_platform_squareT_switch: СОВПАЛО, 877 кадров, 306 с
+Dataset/doubleT_obstacle: СОВПАЛО, 201 кадров, 75 с
+reversed/doubleT_platform: СОВПАЛО, 345 кадров, 144 с
+reversed/roundT_doubleT: СОВПАЛО, 252 кадров, 112 с
+reversed/roundT_pressureGate_roundT: СОВПАЛО, 268 кадров, 112 с
+reversed/roundT_squareT_pressureGate_squareT: СОВПАЛО, 545 кадров, 208 с
+reversed/squareT_platform_squareT_switch: СОВПАЛО, 877 кадров, 278 с
+reversed/doubleT_obstacle: СОВПАЛО, 201 кадров, 77 с
+Synthetic_data/box: СОВПАЛО, 807 кадров, 199 с
+Synthetic_data/human_smashed: СОВПАЛО, 862 кадров, 168 с
+Synthetic_data/human_smashed_diff_tunnels: СОВПАЛО, 722 кадров, 116 с
