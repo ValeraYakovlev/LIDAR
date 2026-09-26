@@ -188,6 +188,13 @@ def truth_tracks(tag, bag, stats):
     if tag == "new_synth":
         ds = np.array([s.get("ds", np.nan) for s in stats], float)
         S = track_length({"ds": ds})
+        # предметы размечены по сумме Δs эталона (кэш экспер. 18) — по ней и рисовать,
+        # иначе при другом измерителе Δs полосы разметки уезжают от находок (экспер. 20)
+        ref = Path("output/exp18_cache/new_synth/cloud_with_fake_obj.npz")
+        if ref.exists():
+            S_ref = track_length({"ds": np.load(ref)["ds"]})
+            if len(S_ref) == len(S):
+                S = S_ref
         info = json.load(open("results/exp18/new_synth_objects.json"))
         objs = list(info["objects"])
         hold = Path("results/exp18/new_synth_holdout_objects.json")
@@ -405,7 +412,7 @@ def build(dataset, bag, out_dir, target, fps, max_frames, variant, holdout_cut, 
         S = S_B = None
     tp = Path(f"output/exp20_truth/{bag}.npz")
     tpath = None
-    if tp.exists() and "last_synth" in str(dataset):
+    if tp.exists() and "last_synth" in str(dataset).lower():
         z = np.load(tp)
         tpath = (z["D"], z["path_x"])
         if "reversed" in str(dataset):
