@@ -97,13 +97,35 @@ def evaluate(stats_dir, bag, mirror=False):
     return out
 
 
+def evaluate_cache(cache_dir, bag, variant):
+    """Тот же замер рабочего и ложных, но находки — вариант детектора на кэше
+    (`exp_far_cache.py` в новой конфигурации трекера): путь в кэше не хранится,
+    поэтому без ошибки пути."""
+    import exp_far_eval as fe
+    from exp_far_cache import load
+    cols, pts = load(cache_dir, bag)
+    det = fe.run_variant(variant, cols, pts)
+    sc = score("Synthetic_data", bag, cols, det)
+    tr = json.load(open(f"output/synthetic_truth/{bag}.json"))
+    wk = {r["idx"]: r["depth_min"] for r in tr["frames"] if r["points"] > 0}
+    fl = [(k, round(min(b), 1)) for k, (raw, conf) in enumerate(det)
+          for b in [[d for d in conf if not (k in wk and abs(d - wk[k]) <= max(2.0, 0.06 * wk[k]))]] if b]
+    return {"n": len(det), "false_conf": sc["false_conf"], "false_raw": sc["false_raw"],
+            "worker": sc["objects"].get("obstacle", {}), "false_frames": fl,
+            "ds_meas": float(np.mean(cols["ds_meas"])), "memory": float("nan"),
+            "err_all": {int(d): None for d in EVAL_D}, "err_zone": {int(d): None for d in EVAL_D},
+            "zone_bad50": None}
+
+
 def fmt(v, f="{:.0f}"):
     return "—" if v is None else f.format(v)
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--stats", nargs="+", required=True, help="папки со статистикой make_far_gifs")
+    p.add_argument("--stats", nargs="*", default=[], help="папки со статистикой make_far_gifs")
+    p.add_argument("--cache", default=None, help="кэш exp_far_cache.py — варианты детектора за секунды")
+    p.add_argument("--variants", nargs="*", default=[], help="варианты детектора для --cache")
     p.add_argument("--names", nargs="+", default=None)
     p.add_argument("--bags", nargs="+", default=DEV_LAST_SYNTH)
     p.add_argument("--mirror", action="store_true", help="статистика по зеркальным копиям")
@@ -120,6 +142,12 @@ def main():
         for bag in a.bags:
             if (Path(sd) / f"{bag}.json").exists():
                 res.setdefault(bag, {})[name] = evaluate(sd, bag, a.mirror)
+    if a.cache:
+        for v in a.variants:
+            for bag in a.bags:
+                if (Path(a.cache) / f"{bag}.npz").exists():
+                    res.setdefault(bag, {})[v] = evaluate_cache(a.cache, bag, v)
+        names = names + a.variants
     print(f"{'запись':14s} {'вариант':10s} | путь: |ошибка| медиана/90% на 50 и 75 м — весь прогон; "
           f"участок выезда | доля >0.3 м на 50 м | рабочий: сыр/подтв м, кадров, непр | ложн подтв/сыр | Δs изм | память")
     for bag in a.bags:
@@ -128,6 +156,10 @@ def main():
             if r is None:
                 continue
             ea, ez = r["err_all"], r["err_zone"]
+            ea = {k: v for k, v in ea.items()}
+            for e in (ea, ez):
+                for d in (50, 75):
+                    e.setdefault(d, None)
             cell = lambda e, d: "—" if e[d] is None else f"{e[d][0]:.2f}/{e[d][1]:.2f}"
             w = r["worker"]
             print(f"{bag:14s} {name:10s} | {cell(ea, 50)} {cell(ea, 75)} ; {cell(ez, 50)} {cell(ez, 75)} | "

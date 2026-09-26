@@ -72,6 +72,12 @@ for _kb in (0.0, 0.002, 0.004):
 VARIANTS["final_b2_x0"] = {**VARIANTS["final_b2"], "alt_mode": "intersect"}
 VARIANTS["final_b2_x"] = {**VARIANTS["final_b2"], "alt_mode": "intersect", "alt_x_min": 25.0}
 VARIANTS["final_x"] = {**FINAL, "alt_mode": "intersect", "alt_x_min": 25.0}
+# Экспер. 20: профиль по высоте — пол относительно своего уровня вблизи.
+VARIANTS["final_b2_f"] = {**VARIANTS["final_b2"], "vp_floor_ref": True}
+VARIANTS["final_b2_xf"] = {**VARIANTS["final_b2_x"], "vp_floor_ref": True}
+VARIANTS["final_xf"] = {**VARIANTS["final_x"], "vp_floor_ref": True}
+VARIANTS["final_b0_xf"] = {**VARIANTS["final_b0"], "alt_mode": "intersect", "alt_x_min": 25.0,
+                           "vp_floor_ref": True}
 for _r0 in (50, 100):
     for _k in (0.005, 0.008):
         VARIANTS[f"tl_r{_r0}_m{int(_k * 1000)}"] = {**BASE, **TRAIN_LOW, **FAR, "r0": float(_r0),
@@ -130,7 +136,7 @@ def side_levels(H, s_edges, v_edges, bin_len=VP_BIN):
     return np.array(out)
 
 
-def vertical_profile(H, s_edges, v_edges, limit):
+def vertical_profile(H, s_edges, v_edges, limit, floor_ref=False):
     """Смещение пути по высоте δ(s) относительно прямой ближнего пола.
 
     δ = 0 до VP_S0; дальше a·(s − s0) + b·(s − s0)² — смена уклона и
@@ -147,10 +153,20 @@ def vertical_profile(H, s_edges, v_edges, limit):
         return (lambda s: np.zeros_like(np.asarray(s, float))), info
     h_c = float(np.median(ce[ref] - np.where(np.isfinite(fl[ref]), fl[ref], 0.0)))
     info["h_ceil"] = h_c
+    # Экспер. 20 (floor_ref): уровень «пола» — верх шпал и полотна, на 0.1 м ниже
+    # головок, а δ(VP_S0) = 0 по построению. Без вычета его собственного уровня
+    # на VP_REF (как у свода — h_c) каждая дальняя полоса пола голосует за «путь
+    # уходит вниз» на эти 0.1 м, а опустившийся свод (затвор, смена сечения) это
+    # подтверждает: гермозатвор, профиль −0.4 м на 100 м при ровном поле.
+    f_ref = 0.0
+    if floor_ref:
+        rf = (sc >= VP_REF[0]) & (sc <= VP_REF[1]) & np.isfinite(fl)
+        f_ref = float(np.median(fl[rf])) if rf.sum() >= 2 else 0.0
+    info["f_ref"] = f_ref
     far = (sc > VP_S0) & (sc <= limit)
     xs, ys, sg = [], [], []
-    for keep, val, sig in ((far & np.isfinite(fl), fl, VP_SIG_F),
-                           (far & np.isfinite(ce), ce - h_c, VP_SIG_C)):
+    for keep, val, sig in ((far & np.isfinite(fl), fl - f_ref, VP_SIG_F),
+                           (far & np.isfinite(ce), ce - h_c - f_ref, VP_SIG_C)):
         xs.append(sc[keep] - VP_S0)
         ys.append(val[keep])
         sg.append(np.full(keep.sum(), sig))
@@ -440,7 +456,7 @@ def run_sequence(p, n, getpts, limit, ds, getside=None, alt_dx=None):
         if p.get("vprof") and getside is not None:
             H, se, ve = getside(k)
             # профиль по высоте — до прежнего предела и в режиме пересечения
-            delta, _ = vertical_profile(H, se, ve, min(lim, lim_alt))
+            delta, _ = vertical_profile(H, se, ve, min(lim, lim_alt), p.get("vp_floor_ref", False))
             v = v - delta(s)
         if p.get("alt_mode") == "intersect" and alt_dx is not None:
             m = gauge_mask_alt(s, u, v, lim, lim_alt, alt_dx[k], p)
@@ -521,7 +537,7 @@ class FarDetector:
             (s > BOX_S[0]) & (s <= BOX_S[1])
         vox = _voxel(np.column_stack([s[m], ug[m], vg[m]]))
         H = side_job.result()
-        delta, vinfo = vertical_profile(H, SIDE_S, SIDE_V, min(lim, lim_alt))
+        delta, vinfo = vertical_profile(H, SIDE_S, SIDE_V, min(lim, lim_alt), p.get("vp_floor_ref", False))
         # те же float16, что в кэше: иначе на границе габарита расходятся точки
         S0 = vox[:, 0].astype(np.float32)
         U0 = vox[:, 1].astype(np.float16).astype(np.float32)
