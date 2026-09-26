@@ -23,6 +23,7 @@ from pathlib import Path
 
 import numpy as np
 
+from exp20_split import guard
 from exp_far_cache import SIDE_S, SIDE_V, load, side_view
 from exp_far_truth import track_length
 from rail_detection import far_detect as fd
@@ -32,8 +33,10 @@ DEV = [("new_synth", "cloud_with_fake_obj"),
        ("Synthetic_data", "box"), ("Synthetic_data", "human_smashed"),
        ("Synthetic_data", "human_smashed_diff_tunnels"),
        ("Dataset", "doubleT_obstacle"),
-       ("Dataset", "doubleT_platform"), ("Dataset", "roundT_doubleT"),
-       ("Dataset", "roundT_pressureGate_roundT"), ("Dataset", "squareT_platform_squareT_switch")]
+       ("Dataset", "doubleT_platform"), ("Dataset", "roundT_pressureGate_roundT"),
+       ("Dataset", "squareT_platform_squareT_switch"),
+       # эксперимент 20: roundT_doubleT отложен, а отложенный §31/§34 уже использован
+       ("Dataset", "roundT_squareT_pressureGate_squareT")]
 PERSON = (4, 75)        # doubleT_obstacle: человек на пути (§25)
 # doubleT_obstacle: коробка на левом рельсе (u −0.98…−0.70, верх 0.16–0.30 м), 56.4 м —
 # человек кладёт её на кадрах 30–45, лежит с кадра 50 до конца записи. Замечено
@@ -153,8 +156,8 @@ def _job(args):
     return bag, v, score(tag, bag, cols, run_variant(v, cols, pts))
 
 
-REAL_CLEAN = ["doubleT_platform", "roundT_doubleT", "roundT_pressureGate_roundT",
-              "squareT_platform_squareT_switch"]
+REAL_CLEAN = ["doubleT_platform", "roundT_pressureGate_roundT", "squareT_platform_squareT_switch",
+              "roundT_squareT_pressureGate_squareT"]
 SYN = ["box", "human_smashed", "human_smashed_diff_tunnels"]
 
 
@@ -163,7 +166,7 @@ def summary(allres, variants):
     и непрерывность, 5 — кадры с находкой, ложные), синтетика (дальность
     подтверждения, ложные), реальные (ложные подтверждённые по прогонам, человек)."""
     print(f"\n{'вариант':16s} | New_synth: 1 / 2 / 3 / 4 подтв. м (непр.) | 5 кадр | ложн | "
-          f"синт: box / hs / hsdt | ложн | реальн. ложн подтв: plat dbl gate sw obst | человек")
+          f"синт: box / hs / hsdt | ложн | реальн. ложн подтв: plat gate sw sqT obst | человек")
     for v in variants:
         ns = allres.get("cloud_with_fake_obj", {}).get(v)
         cell = ""
@@ -199,6 +202,7 @@ def main():
         HOLDOUT = True
         DEV = [("new_synth", "cloud_with_fake_obj"),
                ("Dataset", "roundT_squareT_pressureGate_squareT")]
+    guard([bag for _, bag in DEV if not a.bags or bag in a.bags])
     from concurrent.futures import ProcessPoolExecutor
     jobs = [(tag, bag, v, HOLDOUT) for tag, bag in DEV if not a.bags or bag in a.bags
             for v in a.variants]

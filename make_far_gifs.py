@@ -37,6 +37,7 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Polygon
 from PIL import Image
 
+from exp20_split import guard
 from exp_far_truth import track_length
 from make_gauge_gifs import X_LIM, _crop, _u8
 from rail_detection import bag_path, frame_count, iter_frames
@@ -384,11 +385,11 @@ def main():
     a.add_argument("--fps", type=float, default=8.0)
     a.add_argument("--holdout-cut", action="store_true",
                    help="New_synth: вырезать всё дальше S_B (разработка)")
+    a.add_argument("--holdout", action="store_true",
+                   help="отложенный замер: разрешить отложенные записи эксперимента 20")
     args = a.parse_args()
+    guard(args.bags, args.holdout)
     for bag in args.bags:
-        if bag == "roundT_squareT_pressureGate_squareT" and "/reversed" not in args.dataset \
-                and args.variant != "final":
-            raise SystemExit("отложенный прогон — только финальным вариантом")
         build(args.dataset, bag, Path(args.out), args.target_frames, args.fps, args.max_frames,
               args.variant, args.holdout_cut)
 

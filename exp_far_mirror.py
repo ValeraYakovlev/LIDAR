@@ -14,11 +14,12 @@ import argparse
 
 import numpy as np
 
+from exp20_split import guard
 from exp_far_cache import SIDE_S, SIDE_V, load, side_view
 from rail_detection import far_detect as fd
 
-BAGS = ["doubleT_platform", "roundT_doubleT", "roundT_pressureGate_roundT",
-        "squareT_platform_squareT_switch", "doubleT_obstacle"]
+BAGS = ["doubleT_platform", "roundT_pressureGate_roundT", "squareT_platform_squareT_switch",
+        "roundT_squareT_pressureGate_squareT", "doubleT_obstacle"]   # roundT_doubleT отложен (экспер. 20)
 TOL = 1.0     # м: находки совпали, если дальности отличаются меньше
 
 
@@ -51,7 +52,10 @@ def main():
     a.add_argument("--bags", nargs="+", default=BAGS)
     a.add_argument("--orig", default="output/exp18_cache/Dataset")
     a.add_argument("--mirror", default="output/exp18_cache/reversed")
+    a.add_argument("--holdout", action="store_true",
+                   help="отложенный замер: разрешить отложенные записи эксперимента 20")
     args = a.parse_args()
+    guard(args.bags, args.holdout)
     p = fd.VARIANTS[args.variant]
     print(f"вариант {args.variant}: подтверждённые находки, исходная против отражённой")
     for bag in args.bags:

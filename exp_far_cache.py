@@ -28,6 +28,7 @@ from pathlib import Path
 
 import numpy as np
 
+from exp20_split import guard
 from rail_detection import bag_path, iter_frames
 from rail_detection.contrast_gauge import PATH_GRID, _voxel
 from rail_detection.parallel_path import ParallelGauge, to_path_dict
@@ -150,11 +151,9 @@ def main():
     p.add_argument("--out", default="output/exp18_cache")
     p.add_argument("--max-frames", type=int, default=None)
     p.add_argument("--holdout", action="store_true",
-                   help="отложенный замер: разрешить roundT_squareT_pressureGate_squareT")
+                   help="отложенный замер: разрешить отложенные записи эксперимента 20")
     a = p.parse_args()
-    if "roundT_squareT_pressureGate_squareT" in a.bags and not a.holdout:
-        raise SystemExit("roundT_squareT_pressureGate_squareT отложен (эксперимент 18): "
-                         "только на финальном замере, с --holdout")
+    guard(a.bags, a.holdout)
     tag = Path(a.dataset).name
     for bag in a.bags:
         run(a.dataset, bag, Path(a.out) / tag, a.max_frames)
