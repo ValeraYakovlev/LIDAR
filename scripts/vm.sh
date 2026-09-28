@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-VM=${VM:-ler0_oy@158.160.227.75}
+VM=${VM:-ler0_oy@158.160.240.202}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 REMOTE=metro                       # папка кода на ВМ (от домашней)
 BAGS=data/bags                     # папка записей на ВМ (от домашней)
@@ -63,7 +63,9 @@ case "$cmd" in
         on_vm "mkdir -p output/ros && BAG=$B VARIANT=${2:-final} docker compose run --rm offline" ;;
     demo)
         B=$(bag_dir "${1:-}")
-        on_vm "mkdir -p output/ros && docker compose up -d detector && sleep 3 && \
+        # запись — сначала в память: сетевой SSD ВМ читает ~110 МБ/с, а плееру
+        # нужно ~240 (24 МБ × 10 Гц) — с диска запись играется медленнее реальной
+        on_vm "cat $B/*.db3 > /dev/null && mkdir -p output/ros && docker compose up -d detector && sleep 3 && \
             BAG=$B RATE=${2:-1.0} docker compose run --rm player && \
             sleep 3 && docker compose logs --no-log-prefix detector | tail -40" ;;
     viz)
