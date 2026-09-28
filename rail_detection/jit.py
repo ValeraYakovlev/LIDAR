@@ -226,39 +226,3 @@ def search_side(s, u, w, w0, c, k, sig2, grid, max_steps, w_min, step_min, step_
         if not improved:
             break
     return best_cost, best_b[:best_nb].copy(), best_vals
-
-
-@_jit
-def band_rows(mask, weight, has_weight, xc, dc, preds, i, j, cx, halfwin):
-    """Строки i..j-1 одной полосы views.band_edges: профиль поперёк пути,
-    сдвинутый на предсказанную ось строки, и суммы для глубины полосы.
-
-    Порядок тот же, что у numpy-цикла: колонки строки слева направо
-    (np.where), каждая — в свою ячейку профиля (np.add.at по порядку), сумма
-    весов строки — попарная, как w.sum()."""
-    nx = len(xc)
-    half = nx // 2
-    prof = np.zeros(nx)
-    wbuf = np.empty(nx)
-    dsum = 0.0
-    wsum = 0.0
-    for row in range(i, j):
-        pred = preds[row - i]
-        cnt = 0
-        for col in range(nx):
-            if mask[row, col] and abs(xc[col] - pred) < halfwin:
-                wv = weight[row, col] if has_weight else 1.0
-                o = int(np.rint((xc[col] - pred) / cx)) + half
-                if o < 0:
-                    o = 0
-                elif o > nx - 1:
-                    o = nx - 1
-                prof[o] += wv
-                wbuf[cnt] = wv
-                cnt += 1
-        if cnt == 0:
-            continue
-        ws = pairwise_sum(wbuf, 0, cnt)
-        dsum += dc[row] * ws
-        wsum += ws
-    return prof, dsum, wsum
