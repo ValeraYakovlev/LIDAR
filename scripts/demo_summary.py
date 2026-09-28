@@ -3,9 +3,10 @@
 
     python3 scripts/demo_summary.py output/ros/detections.jsonl
 
-Номера кадров — по записи (от первой пришедшей метки лидара, шаг — по самим
-меткам, у лидара ~0.102 с), а не по счёту пришедших: так их можно сравнить с
-офлайн-разбором.
+Номер кадра — порядковый номер пришедшего сообщения (с нуля). Он совпадает с
+номером кадра в записи, пока узел получает все кадры с первого (сейчас — 200–201
+из 201); по меткам времени номер считать нельзя: в записях есть пропуски
+лидара (doubleT_obstacle: 201 сообщение на 20.4 с).
 """
 
 import json
@@ -17,13 +18,8 @@ def main(path):
     if not rows:
         print("кадров нет")
         return
-    t0 = rows[0]["stamp"]
-    # шаг лидара: между соседними обработанными — (пропущено + 1) шагов
-    steps = sorted((b["stamp"] - a["stamp"]) / (b["skipped"] + 1) for a, b in zip(rows, rows[1:])
-                   if b["stamp"] > a["stamp"])
-    dt = steps[len(steps) // 2] if steps else 0.1
     for r in rows:
-        r["rec"] = round((r["stamp"] - t0) / dt)
+        r["rec"] = r["received"] - 1
     proc = sorted(r["proc_ms"] for r in rows)
     print(f"вариант {rows[0]['variant']}: пришло {rows[-1].get('received', '?')} кадров, "
           f"обработано {len(rows)}, обработка — медиана {proc[len(proc) // 2]:.0f} мс")
