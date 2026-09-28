@@ -257,8 +257,15 @@ def bench(label, bags, n_frames, workers=1, process=False):
     _instrument(log)
     import platform
     import subprocess
-    cpu = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True,
-                         text=True).stdout.strip() or platform.processor()
+    try:
+        cpu = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True,
+                             text=True).stdout.strip()
+    except OSError:
+        cpu = ""
+    if not cpu and Path("/proc/cpuinfo").exists():          # Linux (ВМ, Docker)
+        cpu = next((ln.split(":", 1)[1].strip() for ln in open("/proc/cpuinfo")
+                    if ln.startswith("model name")), "")
+    cpu = cpu or platform.processor()
     out = {"label": label, "cpu": cpu, "workers": workers, "process": process, "bags": {}}
     for dataset, bag in bags:
         frames = [p.copy() for _, p, _ in iter_frames(bag_path(dataset, bag), max_frames=n_frames)]
@@ -370,6 +377,8 @@ def main():
     a.add_argument("--jobs", type=int, default=5)
     a.add_argument("--label", default="ref")
     a.add_argument("--bench-frames", type=int, default=105)
+    a.add_argument("--bench-bags", nargs="*", default=None,
+                   help="bench: записи как «папка:запись» (по умолчанию — три записи §35 на T7)")
     a.add_argument("--workers", type=int, default=1, help="потоков на кадр (1 — последовательно)")
     a.add_argument("--process", action="store_true",
                    help="рельсы и «память» трекера — в отдельном процессе (при --workers > 1)")
@@ -377,7 +386,8 @@ def main():
     a.add_argument("--out", default="results/exp19/speed_boxplot.png")
     args = a.parse_args()
     if args.mode == "bench":
-        bench(args.label, BENCH_BAGS, args.bench_frames, args.workers, args.process)
+        bags = [tuple(x.rsplit(":", 1)) for x in args.bench_bags] if args.bench_bags else BENCH_BAGS
+        bench(args.label, bags, args.bench_frames, args.workers, args.process)
         return
     if args.mode == "plot":
         labels = args.label.split(",")
