@@ -70,30 +70,43 @@ class ObstaclePipeline:
         if len(s_val) == 0:
             return self._check_history()
             
-        # 3. Габарит засек препятствие: отступаем всю длину и нарезаем срезы
-        s_min = np.min(s_val)
-        s_max = np.max(s_val)
+        # 3. Габарит засек препятствие: разделяем на кластеры и отступаем всю длину каждого
+        sort_idx = np.argsort(s_val)
+        s_val = s_val[sort_idx]
+        u_val = u_val[sort_idx]
+        v_val = v_val[sort_idx]
         
-        bins_s = np.arange(s_min, s_max + 0.03, 0.03)
-        if len(bins_s) < 2:
-            return self._check_history()
-            
-        bin_indices = np.digitize(s_val, bins_s) - 1
+        gaps = np.diff(s_val) > 1.0
+        split_indices = np.where(gaps)[0] + 1
         
         current_slices = []
         vectors = []
-        for i in range(len(bins_s) - 1):
-            in_bin = (bin_indices == i)
-            if not np.any(in_bin):
+        
+        for c_s, c_u, c_v in zip(np.split(s_val, split_indices), np.split(u_val, split_indices), np.split(v_val, split_indices)):
+            if len(c_s) == 0:
                 continue
                 
-            u_bin = u_val[in_bin]
-            v_bin = v_val[in_bin]
-            H, _, _ = np.histogram2d(u_bin, v_bin, bins=[10, 10], 
-                                     range=[[self.u_min, self.u_max], [self.v_min, self.v_max]])
-            vectors.append(H.flatten() / 100.0)
-            current_slices.append(bins_s[i])
+            c_s_min = c_s[0]
+            c_s_max = c_s[-1]
             
+            bins_s = np.arange(c_s_min, c_s_max + 0.03, 0.03)
+            if len(bins_s) < 2:
+                continue
+                
+            bin_indices = np.digitize(c_s, bins_s) - 1
+            
+            for i in range(len(bins_s) - 1):
+                in_bin = (bin_indices == i)
+                if not np.any(in_bin):
+                    vectors.append(np.zeros(100))
+                else:
+                    u_bin = c_u[in_bin]
+                    v_bin = c_v[in_bin]
+                    H, _, _ = np.histogram2d(u_bin, v_bin, bins=[10, 10], 
+                                             range=[[self.u_min, self.u_max], [self.v_min, self.v_max]])
+                    vectors.append(H.flatten() / 100.0)
+                current_slices.append(bins_s[i])
+                
         if not vectors:
             return self._check_history()
             
@@ -158,14 +171,14 @@ if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument("--dataset", default="/Volumes/T7/Dataset")
-    p.add_argument("--bags", nargs="*", default=["doubleT_obstacle"])
+    p.add_argument("--bags", nargs="*", default=None)
+    p.add_argument("--model_path", default="xgb_obstacle.json")
     a = p.parse_args()
     
     # Для запуска из корня репозитория путь к модели: ml/xgb_obstacle.json
-    model_file = "ml/xgb_obstacle.json" if os.path.exists("ml/xgb_obstacle.json") else "xgb_obstacle.json"
-    pipeline = ObstaclePipeline(model_file)
+    pipeline = ObstaclePipeline(a.model_path)
     
-    for bag in a.bags:
+    for bag in a.bags or DEFAULT_BAGS:
         print(f"\n--- Запуск пайплайна на записи {bag} ---")
         try:
             for idx, points, n_total in iter_frames(bag_path(a.dataset, bag), stride=1):

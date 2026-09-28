@@ -18,9 +18,9 @@ def load_and_prepare_data(data_dir="D:/synth_data/processed_slices", sample_frac
         X, _, y, _ = train_test_split(X, y, train_size=sample_frac, stratify=y, random_state=42)
     return X, y
 
-def search():
-    print("Запуск GridSearchCV на специальной выборке...")
-    X, y = load_and_prepare_data()
+def search(data_dir):
+    print("Запуск GridSearchCV на сбалансированной выборке...")
+    X, y = load_and_prepare_data(data_dir=data_dir)
     
     pos_idx = np.where(y == 1)[0]
     neg_idx = np.where(y == 0)[0]
@@ -31,7 +31,7 @@ def search():
     
     half_pos = max(1, len(pos_idx) // 2)
     
-    # Train set for GridSearch: Первая половина препятствий + 3x пустых
+    # Train set for GridSearch: половина препятствий + 3x пустых (соотношение 1:3)
     pos_sampled_idx = pos_idx[:half_pos]
     n_neg_needed = min(len(pos_sampled_idx) * 3, len(neg_idx))
     neg_sampled_idx = neg_idx[:n_neg_needed]
@@ -58,9 +58,9 @@ def search():
         json.dump(grid.best_params_, f)
     print("Параметры сохранены в best_params.json")
 
-def train():
+def train(data_dir, out_model):
     print("Обучение финальной модели...")
-    X, y = load_and_prepare_data()
+    X, y = load_and_prepare_data(data_dir=data_dir)
     
     pos_idx = np.where(y == 1)[0]
     neg_idx = np.where(y == 0)[0]
@@ -71,14 +71,16 @@ def train():
     
     half_pos = max(1, len(pos_idx) // 2)
     
-    # Test set: Вторая половина препятствий + 3x пустых (соотношение 1:3)
-    pos_test_idx = pos_idx[half_pos:]
-    n_neg_test = min(len(pos_test_idx) * 3, len(neg_idx))
-    neg_test_idx = neg_idx[:n_neg_test]
-    
-    # Train set: Первая половина препятствий + ВСЕ оставшиеся пустые
+    # Симметричная выборка:
+    # Train: первая половина препятствий (1/4 трейна) + пустые срезы (3/4 трейна)
     pos_train_idx = pos_idx[:half_pos]
-    neg_train_idx = neg_idx[n_neg_test:]
+    n_neg_train = min(len(pos_train_idx) * 3, len(neg_idx) // 2)
+    neg_train_idx = neg_idx[:n_neg_train]
+    
+    # Test: вторая половина препятствий (1/4 теста) + пустые срезы (3/4 теста)
+    pos_test_idx = pos_idx[half_pos:]
+    n_neg_test = min(len(pos_test_idx) * 3, len(neg_idx) - n_neg_train)
+    neg_test_idx = neg_idx[n_neg_train : n_neg_train + n_neg_test]
     
     train_idx = np.concatenate([pos_train_idx, neg_train_idx])
     test_idx = np.concatenate([pos_test_idx, neg_test_idx])
@@ -102,16 +104,22 @@ def train():
         with open("best_params.json", "r") as f:
             params.update(json.load(f))
             
-    # Устанавливаем scale_pos_weight для дисбаланса финальной обучающей выборки
+    # Вычисляем scale_pos_weight динамически по собранной трейн-выборке
     params['scale_pos_weight'] = sum(y_train==0) / max(1, sum(y_train==1))
     
     model = XGBClassifier(**params)
     model.fit(X_train, y_train)
     
-    print("--- Статистика на тестовой выборке (остальная половина препятствий + 3/4 пустых) ---")
+    print("--- Отчет на симметричной тестовой выборке (соотношение 1:3) ---")
     print(classification_report(y_test, model.predict(X_test)))
-    model.save_model("xgb_obstacle.json")
+    model.save_model(out_model)
 
 if __name__ == "__main__":
-    search()
-    train()
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument("--data_dir", default="D:/synth_data/processed_slices")
+    p.add_argument("--out_model", default="xgb_obstacle.json")
+    a = p.parse_args()
+    search(a.data_dir)
+    train(a.data_dir, a.out_model)
+

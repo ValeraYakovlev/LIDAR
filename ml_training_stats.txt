@@ -1,0 +1,47 @@
+
+============================================================
+Training on dataset: D:/synth_data/processed_slices
+============================================================
+Запуск GridSearchCV на специальной выборке...
+Error processing D:/synth_data/processed_slices: Нет .npz файлов
+
+
+============================================================
+Training on dataset: D:/synth_data/processed_slices_icp
+============================================================
+Запуск GridSearchCV на специальной выборке...
+Лучшие параметры: {'colsample_bytree': 0.6, 'gamma': 5.0, 'max_depth': 2, 'n_estimators': 50, 'scale_pos_weight': np.float64(3.0)}
+Параметры сохранены в best_params.json
+Обучение финальной модели...
+--- Статистика на тестовой выборке (остальная половина препятствий + 3/4 пустых) ---
+              precision    recall  f1-score   support
+
+           0       0.96      0.97      0.97      7101
+           1       0.92      0.87      0.90      2367
+
+    accuracy                           0.95      9468
+   macro avg       0.94      0.92      0.93      9468
+weighted avg       0.95      0.95      0.95      9468
+
+Model saved to xgb_obstacle_processed_slices_icp.json
+
+
+============================================================
+Training on dataset: D:/synth_data/processed_slices_tunnel
+============================================================
+Запуск GridSearchCV на специальной выборке...
+Лучшие параметры: {'colsample_bytree': 0.8, 'gamma': 0.1, 'max_depth': 2, 'n_estimators': 50, 'scale_pos_weight': np.float64(3.0)}
+Параметры сохранены в best_params.json
+Обучение финальной модели...
+--- Статистика на тестовой выборке (остальная половина препятствий + 3/4 пустых) ---
+              precision    recall  f1-score   support
+
+           0       0.96      0.99      0.98      7524
+           1       0.97      0.89      0.93      2508
+
+    accuracy                           0.97     10032
+   macro avg       0.97      0.94      0.95     10032
+weighted avg       0.97      0.97      0.97     10032
+
+Model saved to xgb_obstacle_processed_slices_tunnel.json
+

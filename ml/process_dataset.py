@@ -132,37 +132,48 @@ def process_bag(bag_dir):
                 count += 1
                 continue
                 
-            # Нарезаем на срезы по 3 см вдоль оси пути (s)
-            s_max_val = np.max(s_val)
-            bins_s = np.arange(0.0, s_max_val + 0.03, 0.03)
+            # Разделяем точки внутри габарита на отдельные препятствия (кластеры с разрывом > 1.0 м)
+            sort_idx = np.argsort(s_val)
+            s_val = s_val[sort_idx]
+            u_val = u_val[sort_idx]
+            v_val = v_val[sort_idx]
+            label_val = label_val[sort_idx]
             
-            if len(bins_s) < 2:
-                count += 1
-                continue
-                
-            bin_indices = np.digitize(s_val, bins_s) - 1
+            gaps = np.diff(s_val) > 1.0
+            split_indices = np.where(gaps)[0] + 1
             
-            for i in range(len(bins_s) - 1):
-                in_bin = (bin_indices == i)
-                if not np.any(in_bin):
+            for c_s, c_u, c_v, c_lbl in zip(np.split(s_val, split_indices), np.split(u_val, split_indices), np.split(v_val, split_indices), np.split(label_val, split_indices)):
+                if len(c_s) == 0:
                     continue
                     
-                u_bin = u_val[in_bin]
-                v_bin = v_val[in_bin]
-                lbl_bin = label_val[in_bin]
+                c_s_min = c_s[0]
+                c_s_max = c_s[-1]
                 
-                # Векторизуем в сетку 10x10
-                H, _, _ = np.histogram2d(u_bin, v_bin, bins=[10, 10], range=[[u_min, u_max], [v_min, v_max]])
-                vector = H.flatten()
+                bins_s = np.arange(c_s_min, c_s_max + 0.03, 0.03)
+                if len(bins_s) < 2:
+                    continue
+                    
+                bin_indices = np.digitize(c_s, bins_s) - 1
                 
-                # Нормализация (100)
-                vector = vector / 100.0
-                
-                has_obst = any(lbl in obstacle_ids for lbl in lbl_bin)
-                
-                all_vectors.append(vector)
-                all_labels.append(1 if has_obst else 0)
-            
+                for i in range(len(bins_s) - 1):
+                    in_bin = (bin_indices == i)
+                    if not np.any(in_bin):
+                        # Пропускаем пустые срезы - берем только те, где остались какие-то точки (шум/стены или препятствия)
+                        continue
+                    
+                    u_bin = c_u[in_bin]
+                    v_bin = c_v[in_bin]
+                    lbl_bin = c_lbl[in_bin]
+                    
+                    H, _, _ = np.histogram2d(u_bin, v_bin, bins=[10, 10], range=[[u_min, u_max], [v_min, v_max]])
+                    vector = H.flatten() / 100.0
+                    
+                    # Проверяем, есть ли точки реального препятствия
+                    bin_label = 1 if np.any(np.isin(lbl_bin, list(obstacle_ids))) else 0
+                    
+                    all_vectors.append(vector)
+                    all_labels.append(bin_label)
+                    
             count += 1
             if count % 100 == 0:
                 print(f"[{os.path.basename(bag_dir)}] Обработано {count} кадров...")
