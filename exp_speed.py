@@ -316,6 +316,8 @@ HOLDOUT22 = ([("output/last_synth", b) for b in
               ("conv_r300_a30", "conv_r300_a45", "conv_r450_a15", "conv_r450_a30",
                "conv_r450_a45", "conv_r600_a15", "conv_r600_a30", "conv_r600_a45")]
              + [("output/new_synth", FROZEN)])
+# Эксперимент 23: итоговая сверка — зеркала Last_synth (в сверках скорости не были)
+HOLDOUT23 = [("/Volumes/T7/reversed/Last_synth_data", b) for _, b in HOLDOUT22[:8]]
 
 
 def plot(labels, names, out):
@@ -370,6 +372,8 @@ def main():
     a.add_argument("--frozen", action="store_true", help="New_synth — финальная сверка")
     a.add_argument("--holdout22", action="store_true",
                    help="экспер. 22: Last_synth + New_synth — итоговая сверка, один раз")
+    a.add_argument("--holdout23", action="store_true",
+                   help="экспер. 23: зеркала Last_synth — итоговая сверка, один раз")
     a.add_argument("--golden", default=str(GOLDEN), help="папка эталона")
     a.add_argument("--variants", nargs="*", default=list(VARIANTS),
                    help="варианты детектора в эталоне")
@@ -397,6 +401,8 @@ def main():
         jobs = DEV
     elif args.holdout22:
         jobs = HOLDOUT22
+    elif args.holdout23:
+        jobs = HOLDOUT23
     elif args.frozen:
         jobs = [("output/new_synth", FROZEN)]
     else:
