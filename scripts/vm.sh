@@ -7,7 +7,7 @@
 #   scripts/vm.sh deploy                  код → ВМ, сборка образов, тесты
 #   scripts/vm.sh bag /Volumes/T7/Dataset/doubleT_obstacle   запись → ВМ
 #   scripts/vm.sh offline doubleT_obstacle [вариант]         разбор записи целиком
-#   scripts/vm.sh demo doubleT_obstacle [rate]               узел + ros2 bag play
+#   scripts/vm.sh demo Dataset/doubleT_obstacle [rate] [вариант]  узел + ros2 bag play, итог
 #   scripts/vm.sh viz                     RViz2 на ВМ + туннель → http://127.0.0.1:6080
 #   scripts/vm.sh fetch                   результаты ВМ → output/vm/
 #   scripts/vm.sh sync | build [сервисы] | test | ssh [команда] | stop
@@ -64,10 +64,13 @@ case "$cmd" in
     demo)
         B=$(bag_dir "${1:-}")
         # запись — сначала в память: сетевой SSD ВМ читает ~110 МБ/с, а плееру
-        # нужно ~240 (24 МБ × 10 Гц) — с диска запись играется медленнее реальной
-        on_vm "cat $B/*.db3 > /dev/null && mkdir -p output/ros && docker compose up -d detector && sleep 3 && \
-            BAG=$B RATE=${2:-1.0} docker compose run --rm player && \
-            sleep 3 && docker compose logs --no-log-prefix detector | tail -40" ;;
+        # нужно ~240 (24 МБ × 10 Гц) — с диска запись играется медленнее реальной.
+        # Узел — заново на каждый прогон, журнал — с чистого листа.
+        on_vm "cat $B/*.db3 > /dev/null && mkdir -p output/ros && rm -f output/ros/detections.jsonl && \
+            VARIANT=${3:-final} docker compose up -d --force-recreate detector && sleep 3 && \
+            BAG=$B RATE=${2:-1.0} docker compose run --rm player >/dev/null 2>&1 && sleep 3 && \
+            docker compose logs --no-log-prefix detector | grep -E 'кадр|облако' | tail -8 && \
+            echo '== итог прогона' && python3 scripts/demo_summary.py output/ros/detections.jsonl" ;;
     viz)
         on_vm "docker compose up -d viz"
         echo "RViz2: http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale  (Ctrl+C — закрыть туннель)"
