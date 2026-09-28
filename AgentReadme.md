@@ -1,21 +1,26 @@
 # AgentReadme.md
 
 Ориентир по репозиторию для агента (или человека), впервые открывшего проект.
-Не дублирует `knowledge.md` — там подробная база знаний по данным и экспериментам,
-здесь — карта "что где лежит и зачем". Короткий вход с командами — [AGENTS.md](AGENTS.md).
+Не дублирует `docs/knowledge.md` — там подробная база знаний по данным и экспериментам,
+здесь — карта "что где лежит и зачем". Решение и его запуск — [README.md](README.md),
+короткий вход с командами — [AGENTS.md](AGENTS.md).
+
+Исследовательские скрипты, их замеры (`results/`) и кэши (`output/`) лежат в
+`research/`; запускаются оттуда: `cd research && export PYTHONPATH=..`. Пути
+`results/…`, `output/…` и имена скриптов ниже — относительно `research/`.
 
 ## Задача
 
 Хакатон «Московский транспорт»: по потоку ROS 2 `PointCloud2` от 3D-лидара
 беспилотного поезда метро определять препятствие на пути и расстояние до него.
-Подробности ТЗ — в [5. ДепТранспорта.pdf](5.%20ДепТранспорта.pdf) и
-[knowledge.md §1-2](knowledge.md).
+Подробности ТЗ — в [docs/ТЗ_ДепТранспорта.pdf](docs/ТЗ_ДепТранспорта.pdf) и
+[docs/knowledge.md §1-2](docs/knowledge.md).
 
 Подход: препятствие — то, что пересекает габарит поезда, поставленный вдоль
 пути. Поэтому основа всего — надёжная геометрия тоннеля (стены, ось пути,
 кривизна, уклоны, §15–§31); поверх неё — обнаружение (§34) и его ускорение до
-реального времени (§35). Для сдачи по ТЗ ещё нужны ROS 2-узел и Docker (не
-сделаны).
+реального времени (§35, §38–§39). Решение по ТЗ — ROS 2-узел и Docker
+(`ros2/`, `docker/`, README).
 
 ## Откуда берутся данные
 
@@ -24,7 +29,7 @@
 `sensor_msgs/PointCloud2` на bag). Диск должен быть подключён локально; в
 Docker-контексте путь передаётся флагом `--dataset`.
 
-Bag'и (см. [knowledge.md §3](knowledge.md)):
+Bag'и (см. [docs/knowledge.md §3](docs/knowledge.md)):
 
 | bag | сцена | кадров |
 |---|---|---|
@@ -33,7 +38,7 @@ Bag'и (см. [knowledge.md §3](knowledge.md)):
 | roundT_pressureGate_roundT | гермозатвор | 268 |
 | roundT_squareT_pressureGate_squareT | гермозатвор + стрелки | 545 |
 | squareT_platform_squareT_switch | платформа + стрелка | 877 |
-| doubleT_obstacle | стоящий поезд на пути | 201 |
+| doubleT_obstacle | человек на пути (кадры 4–75), коробка на рельсе (50–200) | 201 |
 
 `doubleT_obstacle` — единственный bag с реальным препятствием; во всех
 остальных пяти путь свободен ("чистые" сцены), и именно они используются
@@ -42,7 +47,7 @@ Bag'и (см. [knowledge.md §3](knowledge.md)):
 
 Формат точки (26 байт, little-endian): `x, y, z, intensity: float32`,
 `ring: uint16`, `timestamp: float64`. Глубина вдоль тоннеля — это `-y` (ось Y
-сенсора направлена назад). Подробности координат — [knowledge.md §4-5](knowledge.md).
+сенсора направлена назад). Подробности координат — [docs/knowledge.md §4-5](docs/knowledge.md).
 
 **Зеркальные копии** всех шести записей — `/Volumes/T7/reversed/` (та же
 структура, отражение по оси Y: x → −x, остальное побайтно то же; делает
@@ -79,13 +84,23 @@ r450_a30, r600_a15 — `results/exp20/split.json`.
 ## Структура репозитория
 
 ```
-rail_detection/        — пакет с алгоритмами (см. ниже)
-knowledge.md            — база знаний: данные, эксперименты, что сработало/нет
-experiments/            — планы будущих экспериментов (гипотеза, шаги, метрики, риски)
+README.md               — решение: сборка, запуск, параметры, архитектура, алгоритм, результаты
+rail_detection/         — пакет с алгоритмами (см. ниже)
+ros2/metro_obstacle/    — ROS 2-пакет: узел obstacle_detector, офлайн-разбор, launch, RViz2, тесты
+docker/, docker-compose.yml, .dockerignore — образы runtime (узел) и viz (RViz2 + noVNC)
+scripts/vm.sh           — облачная ВМ с Mac: deploy, bag, demo, viz, fetch
+scripts/demo_summary.py — итог живого прогона узла по его журналу
+docs/knowledge.md       — база знаний: данные, эксперименты, что сработало/нет
+docs/experiments/       — планы экспериментов (гипотеза, шаги, метрики, риски) и их итоги
+docs/ТЗ_ДепТранспорта.pdf — ТЗ
 AgentReadme.md          — этот файл
 AGENTS.md               — короткий вход для агента: окружение, конвейер, команды, правила
 CLAUDE.md               — подключает AGENTS.md для Claude Code
-requirements.txt        — rosbags, numpy, scipy, matplotlib, scikit-learn, pillow (версии закреплены)
+requirements.txt        — rosbags, numpy, scipy, matplotlib, scikit-learn, pillow, numba (версии закреплены)
+
+research/               — всё ниже (скрипты экспериментов, results/, output/, выборки *.json)
+exp23_jit_check.py      — эксп.23: numba против numpy бит в бит (§39)
+exp21_eval.py           — эксп.21: низкие предметы на рельсах, все 32 записи (§37)
 
 run_rail_detection.py   — CLI: детекция рельс/желоба по всем bag'ам, графики
 eval_tunnel_geometry.py — ТЕКУЩАЯ оценка: rail-guided геометрия vs старые методы
@@ -165,6 +180,7 @@ validation_run_v6.json  — roundT_squareT_pressureGate_squareT ЦЕЛИКОМ, 
 | `parallel_path.py` | (§31) **Эксперимент 17**: путь — профиль кривизны по длине пути и поза вагона; стены — отступы от пути по нормали (до двух ступенек). Узлы привязаны к тоннелю и едут на Δs; каждый кадр два старта (память и заново). `ParallelGauge` — габарит §27 вдоль этого пути |
 | `far_detect.py` | (§34) эксперимент 18: габарит поезда, дальние скопления, подтверждение каждого скопления, профиль пути по высоте из вида сбоку; `FarDetector` поверх `ParallelGauge` |
 | `fastops.py` | (§35) пакетные версии мелких вычислений — `lstsq` пачкой, перцентили по группам; ответ бит в бит как у numpy |
+| `jit.py` | (§39) горячие циклы в numba бит в бит с numpy: попарная сумма `np.sum`, ρ Тьюки, взвешенная медиана, перебор ступенек стен целиком; `RAIL_JIT=0` — прежний код |
 | `parallel.py` | (§35) распараллеливание кадра: потоки для поточечных операций и независимых стадий, 3 процесса для логики на Python; `RAIL_WORKERS=4 RAIL_PROCESS=1`, по умолчанию последовательно |
 | `gauge.py` | (§24) Габаритный коридор первой версии и `ObstacleWatch` — подтверждение находки по приближению на Δs (им пользуются и §27, и §31) |
 | `roll.py` | (§25) Крен пути по головкам рельсов, найденным там, где им положено быть (`rail_pose_track`) — наклон габарита |
@@ -314,6 +330,12 @@ validation_run_v6.json  — roundT_squareT_pressureGate_squareT ЦЕЛИКОМ, 
 
 ## Ветки git
 
+**С 2026-09-28 постоянная ветка одна — `main`.** Эксперименты 20–23, ROS 2-узел
+и Docker влиты одним слиянием цепочки `feature/double-track` → `feature/low-objects`
+→ `feature/ros2-docker` → `feature/speed-exact` → `feature/numba`, затем уборка
+раскладки (`feature/release`); ветки удалены. Работа AnRiChie (ML, XGBoost) — его
+ветки на GitHub, в `main` не входит.
+
 Каждый эксперимент — своя ветка, влитая в **`main`** коммитом слияния
 (`--no-ff`), так что его история читается по `git log --graph`. Эксперименты до
 17-го слиты 2026-09-23; эксперименты 18 и 19 — ветки `feature/far-detection` →
@@ -326,6 +348,9 @@ validation_run_v6.json  — roundT_squareT_pressureGate_squareT ЦЕЛИКОМ, 
 | `wall-parallel-v1` | §31–§32: путь и стены одной кривой + зеркальная проверка — эталон пути |
 | `speed-ref` | §35: точка отсчёта ускорения — эталон «ответ тот же» |
 | `far-detection-v1` | §34: габарит поезда, дальние скопления, профиль по высоте — **текущий эталон обнаружения** (вариант `final`, проверен отложенным) |
+| `double-track-v1` | §36: код отложенного замера выезда в двухпутный |
+| `speed-exact-ref` | §38: точка отсчёта ускорения без повторов — эталон `output/exp22_golden` |
+| `numba-ref` | §39: точка отсчёта numba (ответ = `speed-exact-ref`) |
 
 | бывшая ветка | разделы | что в ней |
 |---|---|---|
@@ -343,6 +368,11 @@ validation_run_v6.json  — roundT_squareT_pressureGate_squareT ЦЕЛИКОМ, 
 | `feature/wall-parallel-path` | §31–§33 | путь и стены одной кривой, зеркальная проверка, синтетика |
 | `feature/far-detection` | §34 | эксперимент 18: габарит поезда, дальние скопления, вид сбоку, New_synth |
 | `feature/speed` | §35 | эксперимент 19: ускорение без изменения ответа |
+| `feature/double-track` | §36 | эксперимент 20: выезд в двухпутный, новый Δs |
+| `feature/low-objects` | §37 | эксперимент 21: низкие предметы на рельсах |
+| `feature/ros2-docker` | — | ROS 2-узел, Docker, облачная ВМ |
+| `feature/speed-exact` | §38 | эксперимент 22: ускорение без повторов |
+| `feature/numba` | §39 | эксперимент 23: перебор ступенек стен в numba |
 
 ### Уборка 2026-09-23
 
@@ -358,7 +388,8 @@ validation_run_v6.json  — roundT_squareT_pressureGate_squareT ЦЕЛИКОМ, 
 
 ## Как проверить результат
 
-Текущий метод (эксперименты 18–19):
+Текущий метод (эксперименты 18–23). Все команды — из `research/`
+(`cd research && export PYTHONPATH=..`). Решение целиком (Docker, ROS 2) — README.
 
 ```bash
 # GIF по записи: путь, габарит поезда, вид сбоку, лента находок (ускоренный режим)
@@ -371,9 +402,9 @@ python exp_far_eval.py --summary --variants base final final_b2
 python exp_far_mirror.py --variant final_b2          # зеркальная проверка находок
 python exp_far_vprof.py                              # свод предсказывает пол? (профиль по высоте)
 
-# «ответ тот же» после правки кода конвейера — против эталона speed-ref
-python exp_speed.py check --all --jobs 3 --workers 1
-python exp_speed.py check --all --jobs 3 --workers 4 --process
+# «ответ тот же» после правки кода конвейера — эталон текущего кода (§38–§39)
+python exp_speed.py check --all --golden output/exp22_golden --variants final low_rest_b0 --jobs 6
+python exp_speed.py check --all --golden output/exp22_golden --variants final low_rest_b0 --jobs 3 --workers 4 --process
 python exp_speed.py bench --label my --workers 4 --process   # время кадра по стадиям
 python exp_speed.py plot --label ref,final_w4p --names "до,после"
 ```

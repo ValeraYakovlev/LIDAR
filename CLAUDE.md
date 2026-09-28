@@ -1,3 +1,3 @@
 @AGENTS.md
 
-Карта репозитория — AgentReadme.md, база знаний — knowledge.md.
+Решение и запуск — README.md, карта репозитория — AgentReadme.md, база знаний — docs/knowledge.md.

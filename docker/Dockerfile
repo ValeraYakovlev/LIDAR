@@ -4,7 +4,26 @@
 #   docker build -f docker/Dockerfile --target viz -t metro-obstacle-viz .  # RViz2 в браузере
 #
 # Все зависимости ставятся здесь; ручной установки после сборки не нужно.
+# Узел (runtime) — ПОСЛЕДНЯЯ стадия: docker build без --target собирает её.
 
+# ---------------------------------------------------------------- показ (--target viz)
+# RViz2 в виртуальном экране, доступ из браузера через noVNC. Порт 6080
+# слушается только на 127.0.0.1: снаружи — через SSH-туннель.
+FROM osrf/ros:humble-desktop-jammy AS viz
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN mkdir /tmp/apt-off && mv /etc/apt/sources.list.d/* /tmp/apt-off/ \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        tigervnc-standalone-server novnc websockify openbox fonts-dejavu \
+    && mv /tmp/apt-off/* /etc/apt/sources.list.d/ && rm -rf /tmp/apt-off /var/lib/apt/lists/*
+
+COPY ros2/metro_obstacle/rviz/metro.rviz /opt/viz/metro.rviz
+COPY docker/viz.sh /viz.sh
+ENV VIZ_GEOMETRY=1600x900 VIZ_PORT=6080 VIZ_BIND=127.0.0.1 FIXED_FRAME=lidar_livox
+CMD ["/viz.sh"]
+
+
+# ---------------------------------------------------------------- узел (по умолчанию)
 FROM ros:humble-ros-base-jammy AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -49,20 +68,3 @@ ENV PYTHONPATH=/opt/metro \
 COPY docker/entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["ros2", "launch", "metro_obstacle", "detector.launch.py"]
-
-
-# ---------------------------------------------------------------- показ
-# RViz2 в виртуальном экране, доступ из браузера через noVNC. Порт 6080
-# слушается только на 127.0.0.1: снаружи — через SSH-туннель.
-FROM osrf/ros:humble-desktop-jammy AS viz
-
-ENV DEBIAN_FRONTEND=noninteractive
-RUN mkdir /tmp/apt-off && mv /etc/apt/sources.list.d/* /tmp/apt-off/ \
-    && apt-get update && apt-get install -y --no-install-recommends \
-        tigervnc-standalone-server novnc websockify openbox fonts-dejavu \
-    && mv /tmp/apt-off/* /etc/apt/sources.list.d/ && rm -rf /tmp/apt-off /var/lib/apt/lists/*
-
-COPY ros2/metro_obstacle/rviz/metro.rviz /opt/viz/metro.rviz
-COPY docker/viz.sh /viz.sh
-ENV VIZ_GEOMETRY=1600x900 VIZ_PORT=6080 VIZ_BIND=127.0.0.1 FIXED_FRAME=lidar_livox
-CMD ["/viz.sh"]
