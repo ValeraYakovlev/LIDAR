@@ -165,7 +165,9 @@ def compare(ref, new):
 
 
 def _job(args):
-    mode, dataset, bag, max_frames, workers, process = args
+    global GOLDEN, VARIANTS
+    mode, dataset, bag, max_frames, workers, process, golden, variants = args
+    GOLDEN, VARIANTS = Path(golden), tuple(variants)
     from rail_detection import parallel as par
     par.set_workers(workers)
     par.set_process(process)
@@ -181,7 +183,7 @@ def _job(args):
     if max_frames is not None:
         ref = ref[:len(rows)]
     # сравнение через ту же запись/чтение, что и эталон: одинаковые типы
-    tmp = Path("/tmp") / f"exp19_check_{tag}_{bag}_w{workers}{'p' if process else ''}"
+    tmp = Path("/tmp") / f"{GOLDEN.name}_check_{tag}_{bag}_w{workers}{'p' if process else ''}"
     save(rows, tmp)
     diff = compare(ref, load(tmp))
     if diff is None:
@@ -302,6 +304,12 @@ DEV = ([("/Volumes/T7/Dataset", b) for b in
        + [("/Volumes/T7/Synthetic_data", b) for b in
           ("box", "human_smashed", "human_smashed_diff_tunnels")])
 
+# Эксперимент 22: итоговая сверка — записи, не участвующие в разработке ускорения
+HOLDOUT22 = ([("output/last_synth", b) for b in
+              ("conv_r300_a30", "conv_r300_a45", "conv_r450_a15", "conv_r450_a30",
+               "conv_r450_a45", "conv_r600_a15", "conv_r600_a30", "conv_r600_a45")]
+             + [("output/new_synth", FROZEN)])
+
 
 def plot(labels, names, out):
     """Boxplot времени кадра: по записи — ящик на каждый замер."""
@@ -353,6 +361,11 @@ def main():
     a.add_argument("--bags", nargs="*", default=None)
     a.add_argument("--all", action="store_true", help="все записи разработки ускорения (15)")
     a.add_argument("--frozen", action="store_true", help="New_synth — финальная сверка")
+    a.add_argument("--holdout22", action="store_true",
+                   help="экспер. 22: Last_synth + New_synth — итоговая сверка, один раз")
+    a.add_argument("--golden", default=str(GOLDEN), help="папка эталона")
+    a.add_argument("--variants", nargs="*", default=list(VARIANTS),
+                   help="варианты детектора в эталоне")
     a.add_argument("--max-frames", type=int, default=None)
     a.add_argument("--jobs", type=int, default=5)
     a.add_argument("--label", default="ref")
@@ -372,15 +385,17 @@ def main():
         return
     if args.all:
         jobs = DEV
+    elif args.holdout22:
+        jobs = HOLDOUT22
     elif args.frozen:
         jobs = [("output/new_synth", FROZEN)]
     else:
         jobs = [(args.dataset, b) for b in args.bags]
-    if any(b == FROZEN for _, b in jobs) and not args.frozen:
+    if any(b == FROZEN for _, b in jobs) and not (args.frozen or args.holdout22):
         raise SystemExit("New_synth заморожена: сверка на ней — только с --frozen, в конце")
     with ProcessPoolExecutor(args.jobs) as ex:
-        for line in ex.map(_job, [(args.mode, d, b, args.max_frames, args.workers, args.process)
-                                  for d, b in jobs]):
+        for line in ex.map(_job, [(args.mode, d, b, args.max_frames, args.workers, args.process,
+                                   args.golden, args.variants) for d, b in jobs]):
             print(line, flush=True)
 
 
