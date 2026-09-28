@@ -590,7 +590,22 @@ def _split_cost(s, u, w, bounds, c):
 
 def _search_side(s, u, w, w0, c):
     """Лучшее разбиение кромок одной стены: (цена, границы, отступы отрезков).
-    Жадно — одна ступенька, потом вторая (см. search_steps)."""
+    Жадно — одна ступенька, потом вторая (см. search_steps).
+
+    Экспер. 23: тот же перебор скомпилирован (`jit.search_side`, бит в бит с
+    `_search_side_py`); RAIL_JIT=0 — прежний код."""
+    from . import jit
+
+    if not jit.ENABLED:
+        return _search_side_py(s, u, w, w0, c)
+    grid = np.arange(5.0, s.max() - 5.0, STEP_GRID)
+    cost, bounds, vals = jit.search_side(s, u, w, w0, c, c ** 2 / 6, SIGMA_EDGE ** 2, grid,
+                                         MAX_STEPS, W_MIN, STEP_MIN, STEP_COST, 5.0)
+    return cost, list(bounds), vals
+
+
+def _search_side_py(s, u, w, w0, c):
+    """Перебор ступенек на numpy — как до экспер. 23."""
     base = min((float(np.sum(w * _tukey_rho(u - v, c))) / SIGMA_EDGE ** 2, v)
                for v in (w0, _wmedian(u, w)))
     best = (base[0], [], np.array([base[1]]))
