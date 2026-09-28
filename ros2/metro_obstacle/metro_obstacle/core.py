@@ -24,10 +24,15 @@ CORRIDOR_STEP = 2.0      # м: шаг по глубине, с которым р�
 
 
 def _warm_imports():
-    """Импорт всего, что конвейер тянет лениво (в процессе-помощнике — тоже)."""
+    """Импорт всего, что конвейер тянет лениво, и компиляция numba (экспер. 23)
+    — в процессе-помощнике тоже: иначе первый кадр ждёт компиляции."""
     import sklearn.cluster  # noqa: F401
     from rail_detection import (contrast_gauge, detector, roll, shift,  # noqa: F401
                                 tunnel_frame, views)
+    from rail_detection import parallel_path as pp
+
+    s = np.linspace(1.0, 100.0, 40)
+    pp._search_side(s, np.full(40, 1.8), np.ones(40), 1.8, pp.TUKEY * pp.SIGMA_EDGE)
     return True
 
 

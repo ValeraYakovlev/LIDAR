@@ -32,6 +32,14 @@ RUN . /opt/ros/humble/setup.sh \
     && cd /opt/ws && colcon build --event-handlers console_direct- \
     && rm -rf build log
 
+# numba (экспер. 23) компилирует при первом вызове и кладёт код в кэш рядом с
+# модулем — компиляция здесь, при сборке, чтобы готовый код был в образе.
+RUN cd /opt/metro && PYTHONPATH=/opt/metro python3 -c "\
+import numpy as np; from rail_detection import parallel_path as pp; \
+s = np.linspace(1.0, 100.0, 40); \
+pp._search_side(s, np.full(40, 1.8), np.ones(40), 1.8, pp.TUKEY * pp.SIGMA_EDGE)" \
+    && ls /opt/metro/rail_detection/__pycache__ | grep -c "jit.*nb"
+
 # Ускорение §35 — без изменения ответа (проверено exp_speed.py check).
 ENV PYTHONPATH=/opt/metro \
     RAIL_WORKERS=4 \
