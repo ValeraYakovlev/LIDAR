@@ -1,0 +1,52 @@
+# Всё на сети и IPC хоста: облако ~24 МБ на кадр при 10 Гц идёт через общую
+# память DDS, а не через UDP.
+#
+#   docker compose build
+#   docker compose up detector                            # узел
+#   BAG=/path/to/doubleT_obstacle docker compose run --rm player   # запись
+#   docker compose up viz                                 # RViz2 → http://127.0.0.1:6080/vnc.html
+
+x-ros: &ros
+  network_mode: host
+  ipc: host
+  environment:
+    ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+
+services:
+  detector:
+    <<: *ros
+    build: {context: ., dockerfile: docker/Dockerfile, target: runtime}
+    image: metro-obstacle:latest
+    volumes:
+      - ${OUT:-./output/ros}:/out
+    command: >
+      ros2 launch metro_obstacle detector.launch.py
+      variant:=${VARIANT:-final} queue:=${QUEUE:-latest} topic:=${TOPIC:-auto}
+      log_file:=/out/detections.jsonl
+
+  player:
+    <<: *ros
+    image: metro-obstacle:latest
+    profiles: [tools]
+    volumes:
+      - ${BAG:-./bag}:/bag:ro
+    # Очередь упреждающего чтения — 10 кадров: в Humble плеер сначала заполняет
+    # её целиком (по умолчанию 1000 сообщений — вся запись, 24 МБ кадр), и это
+    # время засчитывается в проигрывание — первые секунды записи уходят залпом.
+    command: ros2 bag play /bag --rate ${RATE:-1.0} --read-ahead-queue-size ${READ_AHEAD:-10}
+
+  offline:
+    image: metro-obstacle:latest
+    profiles: [tools]
+    volumes:
+      - ${BAG:-./bag}:/bag:ro
+      - ${OUT:-./output/ros}:/out
+    command: ros2 run metro_obstacle offline /bag --variant ${VARIANT:-final} --out /out/offline.jsonl
+
+  viz:
+    <<: *ros
+    build: {context: ., dockerfile: docker/Dockerfile, target: viz}
+    image: metro-obstacle-viz:latest
+    environment:
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      FIXED_FRAME: ${FIXED_FRAME:-lidar_livox}

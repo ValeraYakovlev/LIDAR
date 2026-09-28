@@ -60,6 +60,8 @@
 только свежий старт.
 """
 
+import os
+
 import numpy as np
 
 from .curvature import ransac_poly_fit
@@ -145,6 +147,17 @@ FRESH_WIDTH_SIGMA = 2.0   # м: слабый приор отступа у све
 # на такой Δs уводит ступеньки и кривизну на метр за кадр.
 DS_JUMP = 0.3
 DS_HISTORY = 5
+# Как мерить Δs (экспер. 20): "moving" — профиль плотности после вычета рисунка,
+# стоящего на лидаре (shift.ShiftMeter); "density" — прежний способ §20 (до
+# экспер. 20). Переопределяется переменной окружения RAIL_DS_MODE — для
+# сравнения с прежним в одном коде.
+DS_MODE = os.environ.get("RAIL_DS_MODE", "moving")
+# Чем заменять неизмеренный (или отброшенный по DS_JUMP) Δs (экспер. 20): "last" —
+# последним принятым, как было; "median" — медианой последних DS_HISTORY принятых.
+# Одиночный неверный замер в пределах DS_JUMP при "last" везётся на все следующие
+# неизмеренные кадры (синтетика: 1.40 м вместо 1.67 пять кадров подряд — 1.6 м
+# ошибки положения узлов и предмета).
+DS_HOLD = os.environ.get("RAIL_DS_HOLD", "median")
 
 
 # ---------------------------------------------------------------- базис
@@ -577,7 +590,22 @@ def _split_cost(s, u, w, bounds, c):
 
 def _search_side(s, u, w, w0, c):
     """Лучшее разбиение кромок одной стены: (цена, границы, отступы отрезков).
-    Жадно — одна ступенька, потом вторая (см. search_steps)."""
+    Жадно — одна ступенька, потом вторая (см. search_steps).
+
+    Экспер. 23: тот же перебор скомпилирован (`jit.search_side`, бит в бит с
+    `_search_side_py`); RAIL_JIT=0 — прежний код."""
+    from . import jit
+
+    if not jit.ENABLED:
+        return _search_side_py(s, u, w, w0, c)
+    grid = np.arange(5.0, s.max() - 5.0, STEP_GRID)
+    cost, bounds, vals = jit.search_side(s, u, w, w0, c, c ** 2 / 6, SIGMA_EDGE ** 2, grid,
+                                         MAX_STEPS, W_MIN, STEP_MIN, STEP_COST, 5.0)
+    return cost, list(bounds), vals
+
+
+def _search_side_py(s, u, w, w0, c):
+    """Перебор ступенек на numpy — как до экспер. 23."""
     base = min((float(np.sum(w * _tukey_rho(u - v, c))) / SIGMA_EDGE ** 2, v)
                for v in (w0, _wmedian(u, w)))
     best = (base[0], [], np.array([base[1]]))
@@ -736,6 +764,8 @@ class WallParallelTracker:
         if ds_ok:
             ds_use = self.last_ds = float(ds)
             self.ds_hist = (self.ds_hist + [ds_use])[-DS_HISTORY:]
+        elif DS_HOLD == "median" and self.ds_hist:
+            ds_use = float(np.median(self.ds_hist))
         else:
             ds_use = self.last_ds if self.last_ds is not None else 0.0
 
@@ -850,13 +880,18 @@ class ParallelGauge:
     вдоль нового пути. Всё, что не касается пути, намеренно не менялось:
     находки двух методов должны отличаться только из-за пути."""
 
-    def __init__(self, confirm=3):
+    def __init__(self, confirm=3, ds_mode=None):
         from .gauge import ObstacleWatch
+        from .shift import ShiftMeter
         self.tracker = WallParallelTracker()
         self.prior = None
         self.offset = 0.0
         self.prev_band = None
         self.watch = ObstacleWatch(confirm=confirm)
+        # экспер. 20: "moving" — Δs с вычетом рисунка, стоящего на лидаре (shift.ShiftMeter);
+        # "density" — прежний способ §20
+        self.ds_mode = ds_mode or DS_MODE
+        self.meter = ShiftMeter()
 
     def update(self, points, steps=1):
         from . import contrast_gauge as cg
@@ -898,6 +933,7 @@ class ParallelGauge:
             ref = to_path_dict(track_curve(self.tracker.st), cg.PATH_GRID, "")
         if ref is None:
             self.prev_band = None
+            self.meter.reset()
             self.watch.reset()
             self.tracker.reset()
             return None
@@ -914,7 +950,12 @@ class ParallelGauge:
         band_sel = (s0 > 2) & (s0 < 60)
         band = {"d": s0[band_sel], "u": u0[band_sel], "v": v0[band_sel]}
         shift = None
-        if self.prev_band is not None and len(band["d"]) > 500:
+        if self.ds_mode == "moving":
+            if len(band["d"]) > 500:
+                shift = self.meter.update(self.prev_band, band, max_shift=2.2 * max(steps, 1))
+            else:
+                self.meter.reset()
+        elif self.prev_band is not None and len(band["d"]) > 500:
             est = estimate_shift(self.prev_band, band, max_shift=2.2 * max(steps, 1))
             if est.get("ok"):
                 shift = float(est["shift"])

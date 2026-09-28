@@ -1,0 +1,66 @@
+{
+ "conv_r300_a30": {
+  "R": 300,
+  "A": 30,
+  "portal": 257.1,
+  "nose_retreat": 285.1,
+  "merge": 317.1,
+  "person": 312.1
+ },
+ "conv_r300_a45": {
+  "R": 300,
+  "A": 45,
+  "portal": 335.6,
+  "nose_retreat": 363.6,
+  "merge": 395.6,
+  "person": 390.6
+ },
+ "conv_r450_a15": {
+  "R": 450,
+  "A": 15,
+  "portal": 207.8,
+  "nose_retreat": 235.8,
+  "merge": 267.8,
+  "person": 262.8
+ },
+ "conv_r450_a30": {
+  "R": 450,
+  "A": 30,
+  "portal": 325.6,
+  "nose_retreat": 353.6,
+  "merge": 385.6,
+  "person": 380.6
+ },
+ "conv_r450_a45": {
+  "R": 450,
+  "A": 45,
+  "portal": 443.4,
+  "nose_retreat": 471.4,
+  "merge": 503.4,
+  "person": 498.4
+ },
+ "conv_r600_a15": {
+  "R": 600,
+  "A": 15,
+  "portal": 237.1,
+  "nose_retreat": 265.1,
+  "merge": 297.1,
+  "person": 292.1
+ },
+ "conv_r600_a30": {
+  "R": 600,
+  "A": 30,
+  "portal": 394.2,
+  "nose_retreat": 422.2,
+  "merge": 454.2,
+  "person": 449.2
+ },
+ "conv_r600_a45": {
+  "R": 600,
+  "A": 45,
+  "portal": 551.2,
+  "nose_retreat": 579.2,
+  "merge": 611.2,
+  "person": 606.2
+ }
+}

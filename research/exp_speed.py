@@ -127,12 +127,17 @@ def _close(a, b):
     return bool(np.all(both_nan | (np.abs(a - b) <= TOL)))
 
 
+IGNORE = ()      # поля, не входящие в «ответ тот же» (--ignore; экспер. 23: alt_x между платформами)
+
+
 def compare(ref, new):
     """Первое расхождение: (кадр, поле, эталон, сейчас) или None."""
     if len(ref) != len(new):
         return (-1, "число кадров", len(ref), len(new))
     for k, (a, b) in enumerate(zip(ref, new)):
         for key in sorted(set(a) | set(b)):
+            if key in IGNORE:
+                continue
             x, y = a.get(key), b.get(key)
             if key in ARRAYS:
                 if (x is None) != (y is None) or (x is not None and not _close(x, y)):
@@ -165,7 +170,9 @@ def compare(ref, new):
 
 
 def _job(args):
-    mode, dataset, bag, max_frames, workers, process = args
+    global GOLDEN, VARIANTS, IGNORE
+    mode, dataset, bag, max_frames, workers, process, golden, variants, ignore = args
+    GOLDEN, VARIANTS, IGNORE = Path(golden), tuple(variants), tuple(ignore)
     from rail_detection import parallel as par
     par.set_workers(workers)
     par.set_process(process)
@@ -181,7 +188,7 @@ def _job(args):
     if max_frames is not None:
         ref = ref[:len(rows)]
     # сравнение через ту же запись/чтение, что и эталон: одинаковые типы
-    tmp = Path("/tmp") / f"exp19_check_{tag}_{bag}_w{workers}{'p' if process else ''}"
+    tmp = Path("/tmp") / f"{GOLDEN.name}_check_{tag}_{bag}_w{workers}{'p' if process else ''}"
     save(rows, tmp)
     diff = compare(ref, load(tmp))
     if diff is None:
@@ -255,8 +262,15 @@ def bench(label, bags, n_frames, workers=1, process=False):
     _instrument(log)
     import platform
     import subprocess
-    cpu = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True,
-                         text=True).stdout.strip() or platform.processor()
+    try:
+        cpu = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True,
+                             text=True).stdout.strip()
+    except OSError:
+        cpu = ""
+    if not cpu and Path("/proc/cpuinfo").exists():          # Linux (ВМ, Docker)
+        cpu = next((ln.split(":", 1)[1].strip() for ln in open("/proc/cpuinfo")
+                    if ln.startswith("model name")), "")
+    cpu = cpu or platform.processor()
     out = {"label": label, "cpu": cpu, "workers": workers, "process": process, "bags": {}}
     for dataset, bag in bags:
         frames = [p.copy() for _, p, _ in iter_frames(bag_path(dataset, bag), max_frames=n_frames)]
@@ -301,6 +315,14 @@ DEV = ([("/Volumes/T7/Dataset", b) for b in
            "doubleT_obstacle")]
        + [("/Volumes/T7/Synthetic_data", b) for b in
           ("box", "human_smashed", "human_smashed_diff_tunnels")])
+
+# Эксперимент 22: итоговая сверка — записи, не участвующие в разработке ускорения
+HOLDOUT22 = ([("output/last_synth", b) for b in
+              ("conv_r300_a30", "conv_r300_a45", "conv_r450_a15", "conv_r450_a30",
+               "conv_r450_a45", "conv_r600_a15", "conv_r600_a30", "conv_r600_a45")]
+             + [("output/new_synth", FROZEN)])
+# Эксперимент 23: итоговая сверка — зеркала Last_synth (в сверках скорости не были)
+HOLDOUT23 = [("/Volumes/T7/reversed/Last_synth_data", b) for _, b in HOLDOUT22[:8]]
 
 
 def plot(labels, names, out):
@@ -353,10 +375,21 @@ def main():
     a.add_argument("--bags", nargs="*", default=None)
     a.add_argument("--all", action="store_true", help="все записи разработки ускорения (15)")
     a.add_argument("--frozen", action="store_true", help="New_synth — финальная сверка")
+    a.add_argument("--holdout22", action="store_true",
+                   help="экспер. 22: Last_synth + New_synth — итоговая сверка, один раз")
+    a.add_argument("--holdout23", action="store_true",
+                   help="экспер. 23: зеркала Last_synth — итоговая сверка, один раз")
+    a.add_argument("--golden", default=str(GOLDEN), help="папка эталона")
+    a.add_argument("--variants", nargs="*", default=list(VARIANTS),
+                   help="варианты детектора в эталоне")
+    a.add_argument("--ignore", nargs="*", default=[],
+                   help="поля вне сверки: alt_x — между платформами (§39: неустойчив к последнему биту)")
     a.add_argument("--max-frames", type=int, default=None)
     a.add_argument("--jobs", type=int, default=5)
     a.add_argument("--label", default="ref")
     a.add_argument("--bench-frames", type=int, default=105)
+    a.add_argument("--bench-bags", nargs="*", default=None,
+                   help="bench: записи как «папка:запись» (по умолчанию — три записи §35 на T7)")
     a.add_argument("--workers", type=int, default=1, help="потоков на кадр (1 — последовательно)")
     a.add_argument("--process", action="store_true",
                    help="рельсы и «память» трекера — в отдельном процессе (при --workers > 1)")
@@ -364,7 +397,8 @@ def main():
     a.add_argument("--out", default="results/exp19/speed_boxplot.png")
     args = a.parse_args()
     if args.mode == "bench":
-        bench(args.label, BENCH_BAGS, args.bench_frames, args.workers, args.process)
+        bags = [tuple(x.rsplit(":", 1)) for x in args.bench_bags] if args.bench_bags else BENCH_BAGS
+        bench(args.label, bags, args.bench_frames, args.workers, args.process)
         return
     if args.mode == "plot":
         labels = args.label.split(",")
@@ -372,15 +406,19 @@ def main():
         return
     if args.all:
         jobs = DEV
+    elif args.holdout22:
+        jobs = HOLDOUT22
+    elif args.holdout23:
+        jobs = HOLDOUT23
     elif args.frozen:
         jobs = [("output/new_synth", FROZEN)]
     else:
         jobs = [(args.dataset, b) for b in args.bags]
-    if any(b == FROZEN for _, b in jobs) and not args.frozen:
+    if any(b == FROZEN for _, b in jobs) and not (args.frozen or args.holdout22):
         raise SystemExit("New_synth заморожена: сверка на ней — только с --frozen, в конце")
     with ProcessPoolExecutor(args.jobs) as ex:
-        for line in ex.map(_job, [(args.mode, d, b, args.max_frames, args.workers, args.process)
-                                  for d, b in jobs]):
+        for line in ex.map(_job, [(args.mode, d, b, args.max_frames, args.workers, args.process,
+                                   args.golden, args.variants, args.ignore) for d, b in jobs]):
             print(line, flush=True)
 
 

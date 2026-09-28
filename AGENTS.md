@@ -4,19 +4,32 @@
 беспилотного поезда метро находить препятствие на пути и расстояние до него.
 Язык проекта — русский: документы, комментарии, сообщения коммитов.
 
-Этот файл — короткий вход. Подробная карта репозитория — [AgentReadme.md](AgentReadme.md),
-база знаний по всем экспериментам — [knowledge.md](knowledge.md) (§1–§35),
-планы и итоги экспериментов — [experiments/](experiments/README.md).
+Этот файл — короткий вход. Решение и его запуск — [README.md](README.md);
+подробная карта репозитория — [AgentReadme.md](AgentReadme.md); база знаний по
+всем экспериментам — [docs/knowledge.md](docs/knowledge.md) (§1–§39); планы и
+итоги экспериментов — [docs/experiments/](docs/experiments/README.md).
+
+## Раскладка
+
+| где | что |
+|---|---|
+| `rail_detection/` | алгоритм |
+| `ros2/metro_obstacle/`, `docker/`, `docker-compose.yml` | решение по ТЗ: ROS 2-узел и Docker |
+| `scripts/` | `vm.sh` — облачная ВМ с Mac, `demo_summary.py` |
+| `docs/` | ТЗ, база знаний, планы экспериментов |
+| `research/` | скрипты экспериментов, `results/` (в git), `output/` (кэши, эталоны, GIF — не в git) |
 
 ## Окружение
 
 ```bash
 python3 -m venv venv && source venv/bin/activate   # проверено на Python 3.9.6
 pip install -r requirements.txt                    # версии закреплены — не обновлять без сверки
+cd research && export PYTHONPATH=..                # все исследовательские скрипты — отсюда
 ```
 
 Данные **не в репозитории** — на внешнем диске `/Volumes/T7` (без него скрипты
-с записями падают с `AnyReaderError: ... paths are missing`):
+с записями падают с `AnyReaderError: ... paths are missing`). Пути `output/…`
+ниже — внутри `research/`.
 
 | путь | что |
 |---|---|
@@ -24,74 +37,92 @@ pip install -r requirements.txt                    # версии закрепл
 | `/Volumes/T7/reversed/` | их зеркальные копии (x → −x) — для зеркальной проверки |
 | `/Volumes/T7/Synthetic_data/` | 3 синтетические записи с разметкой (`/lidar_points_labeled`) |
 | `/Volumes/T7/New_synth_data/` | синтетика с 10 предметами; открывается через обёртку `output/new_synth/cloud_with_fake_obj/` (ссылка на `.db3` + сделанный нами `metadata.yaml`); `--dataset output/new_synth` |
+| `/Volumes/T7/Last_synth_data/` | 8 синтетических выездов в двухпутный `conv_r{R}_a{A}` (рабочий за 5 м до слияния, разметка, `/tf`); распакованы из `.rar`, `.db3` и `yaml/` лежат раздельно — обёртка `output/last_synth/<запись>/` (пересоздаёт `exp20_wrap.py`), `--dataset output/last_synth`; зеркала — `/Volumes/T7/reversed/Last_synth_data` |
 
-## Текущий конвейер кадра
+## Конвейер кадра
 
 1. `rail_detection.parallel_path.ParallelGauge.update(points)` — путь и стены
-   тоннеля одной кривой (§31), крен по рельсам, Δs между кадрами.
+   тоннеля одной кривой (§31), крен по рельсам, Δs между кадрами (§36: с вычетом
+   рисунка, стоящего на лидаре; прежний — `RAIL_DS_MODE=density RAIL_DS_HOLD=last`).
 2. `rail_detection.far_detect.FarDetector(VARIANTS[...]).update(res)` —
    обнаружение (§34): габарит кузова 81-717 (2.67 × 3.65 м, вырез под
    контактный рельс), профиль пути по высоте из вида сбоку, скопления с порогом
    по дальности, подтверждение каждого скопления (3 из 5 кадров).
-   Варианты: `final` — проверен отложенными данными (тег `far-detection-v1`);
-   `final_b2` — то же с меньшим запасом снизу, находит коробку на рельсе, но
-   отложенными данными НЕ проверен (§34, «18б»).
-3. Ускорение (§35) — без изменения ответа: `RAIL_WORKERS=4 RAIL_PROCESS=1`
-   (по умолчанию всё последовательно). ~97 / 84 / 76 мс на кадр на Apple M4.
-   **С `RAIL_PROCESS=1` запускающий скрипт обязан иметь защиту
+   **`final` — рабочий и по умолчанию** (проверен отложенными §34, §36).
+   `low_rest_b0` (§37) — видит низкие предметы на рельсах (коробка 92 из 125
+   кадров), новых ложных нет, но слепой проверки нет — записей не осталось.
+   `final_b2` не использовать (§36); `final_b2_xf` отложенный замер не прошёл (§36).
+3. Ускорение без изменения ответа: `RAIL_WORKERS=4 RAIL_PROCESS=1` (§35;
+   по умолчанию последовательно), `RAIL_JIT=1` — перебор ступенек стен в numba
+   (§39, по умолчанию; `0` — прежний код). ~78 мс на кадр на M4, ~157 мс на
+   облачной ВМ. **С `RAIL_PROCESS=1` запускающий скрипт обязан иметь защиту
    `if __name__ == "__main__":`** — вспомогательные процессы стартуют через
-   spawn и заново выполняют главный модуль; без защиты каждый из них начнёт
-   гнать запись сам и всё упадёт с `EOFError` (касается и будущего ROS 2-узла).
+   spawn и заново выполняют главный модуль (скрипт со стандартного ввода не
+   годится).
+4. ROS 2-узел `ros2/metro_obstacle` (`obstacle_detector`): приём облака,
+   очередь «свежий кадр», тот же конвейер, публикация `/obstacle/*` — README.
 
-## Главные команды
+## Главные команды (из `research/`, `PYTHONPATH=..`)
 
 ```bash
-# GIF по записи (ускоренный режим, вариант final_b2)
-RAIL_WORKERS=4 RAIL_PROCESS=1 python make_far_gifs.py --dataset /Volumes/T7/Dataset \
-    --bags doubleT_obstacle --variant final_b2 --out "output/Opus 5.5/speed/real"
+# сверка «ответ тот же» (после ЛЮБОЙ правки кода конвейера) — эталон текущего кода
+python exp_speed.py check --all --golden output/exp22_golden --variants final low_rest_b0 --jobs 6
+python exp_speed.py check --all --golden output/exp22_golden --variants final low_rest_b0 --jobs 3 --workers 4 --process
+#   Mac ↔ Linux и numba под Linux — с --ignore alt_x (§39)
+
+# замер скорости по стадиям
+python exp_speed.py bench --label my --workers 4 --process
 
 # мерило обнаружения на кэше (дальность, непрерывность, ложные) — секунды
-python exp_far_eval.py --summary --variants base final final_b2
+python exp_far_eval.py --summary --variants final low_rest_b0
 
-# сверка «ответ тот же» против эталона speed-ref (после ЛЮБОЙ правки кода конвейера)
-python exp_speed.py check --all --jobs 3 --workers 1
-python exp_speed.py check --all --jobs 3 --workers 4 --process
-
-# замер скорости и график
-python exp_speed.py bench --label my --workers 4 --process
-python exp_speed.py plot --label ref,my --names "до,после"
+# GIF по записи — отсматривать самому
+RAIL_WORKERS=4 RAIL_PROCESS=1 python make_far_gifs.py --dataset /Volumes/T7/Dataset \
+    --bags doubleT_obstacle --variant final --out "output/Opus 5.5/check"
 
 # зеркальная проверка находок
-python exp_far_mirror.py --variant final_b2
+python exp_far_mirror.py --variant final
+
+# выезд в двухпутный (§36): правда по /tf и разметке, мерило, зеркала
+python exp20_truth.py
+python exp20_eval.py --stats "<папка прогона>/last_synth" --false
 ```
 
-Кэши (`output/exp18_cache`, ~1 ГБ) и эталоны сверки (`output/exp19_golden`,
-~100 МБ) лежат в `output/` и в git не входят; пересоздаются
-`exp_far_cache.py` и `exp_speed.py golden` (нужен диск T7).
+Решение — из корня: `docker build -f docker/Dockerfile -t metro-obstacle .` и
+дальше по README. Облачная ВМ — только `scripts/vm.sh` с Mac (`deploy`, `bag`,
+`demo`, `viz`); код на ВМ не править.
 
 ## Правила работы — не нарушать
 
-- **Эксперимент — своя ветка** `feature/<тема>`; план в `experiments/NN-*.md`,
-  итог — раздел `knowledge.md` §N; в `main` — коммитом слияния (`--no-ff`).
+- **Эксперимент — своя ветка** `feature/<тема>`; план в
+  `docs/experiments/NN-*.md`, итог — раздел `docs/knowledge.md` §N; в `main` —
+  коммитом слияния (`--no-ff`), ветка после слияния удаляется. Постоянная ветка
+  одна — `main`.
 - **Подгонять под отдельную запись запрещено.** Параметры выбираются на
   разработочном наборе и физике; отложенные данные замораживаются коммитом ДО
-  первой правки и меряются ОДИН раз. Сейчас все отложенные наборы уже
-  использованы (§31, §34, §35) — новому эксперименту нужен новый отложенный прогон.
+  первой правки и меряются ОДИН раз. Все отложенные наборы для алгоритма уже
+  использованы (§31, §34, §36) — новому эксперименту нужен новый отложенный
+  прогон. Нетронутых записей не осталось.
 - **Любое заявленное улучшение — зеркальная проверка** (§32, `exp_far_mirror.py`,
   `eval_mirror.py`).
 - **Ускорение не меняет ответ.** Правка ради скорости принимается, только если
-  `exp_speed.py check` совпадает с эталоном на всех записях; «почти то же» —
-  это уже другой алгоритм. Эталон привязан к машине и BLAS: на другой машине
-  (Linux/OpenBLAS) сначала `exp_speed.py golden` со своего `speed-ref`.
+  `exp_speed.py check` совпадает с эталоном на всех записях. Эталон разработки —
+  `output/exp22_golden` (тег `speed-exact-ref`, = `numba-ref`); эталон привязан к
+  платформе: numpy под Linux (AVX-512, SVML) не бит в бит с Mac — там свой
+  эталон и `--ignore alt_x`.
 - **GIF отсматривать самому** до того, как писать о результате.
 
-## Состояние (2026-09-26) и что дальше
+## Состояние (2026-09-28)
 
-- Ветки `feature/far-detection` (экспер. 18) → `feature/speed` (экспер. 19,
-  растёт из первой) готовы к слиянию в `main`. Теги: `wall-parallel-v1` (путь),
-  `far-detection-v1` (обнаружение), `speed-ref` (эталон ускорения).
-- Не сделано для сдачи по ТЗ: ROS 2-узел (подписка на `PointCloud2`, публикация
-  «есть / нет + расстояние»), Docker (Ubuntu 22.04 + ROS 2 Humble), замер
-  скорости на процессоре, близком к стенду (i7-9700E).
-- Открытые дефекты: ложные в раструбе двухпутного — ошибка пути (§32, §34);
-  тонкие предметы (шнур 5 см) не видны; путь строится до 150 м.
+- `main` — всё: эксперименты до 23, ROS 2-узел, Docker, README по ТЗ.
+  Теги: `wall-parallel-v1`, `far-detection-v1`, `speed-ref`, `double-track-v1`,
+  `speed-exact-ref`, `numba-ref`.
+- Работа AnRiChie (ML, XGBoost) — отдельные ветки на GitHub, в `main` не входит.
+- Не сделано по ТЗ: видео работы; замер на стенде (i7-9700E).
+- Скорость: облако 157 мс на кадр — узел в живом потоке берёт ~каждый 2-й кадр.
+  Дальше — подгонка формы стен (`_observed_edge`, только до 1e-6) или конвейер
+  через кадр (§39).
+- Открытые дефекты: ложные в раструбе двухпутного — обе гипотезы пути
+  ошибаются согласно, стены вдали не параллельны пути (§36); низкие предметы
+  (коробка 0.15 м) вариантом `final` и тонкие (шнур 5 см) не видны; путь
+  строится до 150 м.
