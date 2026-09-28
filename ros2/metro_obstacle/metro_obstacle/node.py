@@ -7,7 +7,8 @@
 Публикация:
   /obstacle/detected       std_msgs/Bool       есть ли подтверждённое препятствие
   /obstacle/distance       std_msgs/Float32    до ближайшего, м вдоль пути (NaN — нет)
-  /obstacle/status         std_msgs/String     JSON кадра: всё выше + задержка, пропуски
+  /obstacle/status         std_msgs/String     JSON кадра: всё выше + задержка, пропуски,
+                                               частота прихода, отставание потока
   /obstacle/markers        visualization_msgs/MarkerArray  габарит и препятствие для RViz2
   /obstacle/gauge_points   sensor_msgs/PointCloud2  точки, попавшие в габарит
   /obstacle/cloud_preview  sensor_msgs/PointCloud2  прореженное входное облако
@@ -40,6 +41,10 @@ from rail_detection.loader import to_points
 from .core import DEFAULT_VARIANT, Pipeline
 
 PREFERRED_TOPIC = "/lidar_points"
+# Известные имена топика лидара (реальные записи и синтетика): на них узел
+# подписывается сразу, до появления издателя, — как на поезде, где детектор
+# ждёт лидар. Иначе первые кадры приходят, пока узел ищет топик.
+KNOWN_TOPICS = ("/sensing/lidar/hesai128/pointcloud", "/lidar_points")
 CLOUD_TYPE = "sensor_msgs/msg/PointCloud2"
 
 GREEN = ColorRGBA(r=0.1, g=0.9, b=0.3, a=0.9)
@@ -106,14 +111,20 @@ class ObstacleNode(Node):
         self.received = 0          # кадров пришло
         self.last_seq = None       # номер последнего обработанного
         self.last_rx = None        # время прихода последнего кадра
+        self.rx_times = collections.deque(maxlen=21)   # приход последних кадров
+        self.rx_origin = None      # (приход, метка лидара) первого кадра потока
         self.running = True
-        self.sub = None
+        self.subs = {}             # топик → подписка
+        self.active_topic = None   # первый топик, с которого пришёл кадр
         self.worker = threading.Thread(target=self._loop, daemon=True)
         self.worker.start()
 
         topic = gp("topic")
+        self.find_timer = None
         if topic == "auto":
-            self.get_logger().info("жду топик облака PointCloud2 …")
+            for t in KNOWN_TOPICS:
+                self._subscribe(t)
+            self.get_logger().info("жду облако PointCloud2 (известные топики + поиск) …")
             self.find_timer = self.create_timer(0.5, self._find_topic)
         else:
             self._subscribe(topic)
@@ -122,25 +133,55 @@ class ObstacleNode(Node):
     # ------------------------------------------------------------ приём
 
     def _find_topic(self):
+        """Облако под незнакомым именем: подписаться, когда появится издатель."""
         topic = pick_topic(self.get_topic_names_and_types())
-        if topic:
-            self.find_timer.cancel()
+        if topic and topic not in self.subs:
             self._subscribe(topic)
 
     def _subscribe(self, topic):
         qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10,
                          reliability=ReliabilityPolicy.RELIABLE)
-        self.sub = self.create_subscription(PointCloud2, topic, self._on_cloud, qos)
-        self.get_logger().info(f"подписан на {topic}")
+        self.subs[topic] = self.create_subscription(
+            PointCloud2, topic, lambda m, t=topic: self._on_cloud(m, t), qos)
 
-    def _on_cloud(self, msg):
+    def _choose(self, topic):
+        """Первый топик, с которого пришёл кадр, — единственный: остальные подписки
+        снимаются (в синтетике рядом идёт размеченное облако — его брать нельзя)."""
+        self.active_topic = topic
+        if self.find_timer is not None:
+            self.find_timer.cancel()
+        for t in [t for t in self.subs if t != topic]:
+            self.destroy_subscription(self.subs.pop(t))
+        self.get_logger().info(f"облако идёт из {topic}")
+
+    def _on_cloud(self, msg, topic):
+        if self.active_topic is None:
+            self._choose(topic)
+        elif topic != self.active_topic:
+            return
         now = time.monotonic()
+        stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         with self.cv:
             gap = self.last_rx is not None and now - self.last_rx > self.reset_gap
+            if gap or self.rx_origin is None:
+                self.rx_times.clear()
+                self.rx_origin = (now, stamp)
             self.last_rx = now
             self.received += 1
-            self.pending.append((self.received, now, msg, gap))
+            self.rx_times.append(now)
+            # насколько кадр пришёл позже, чем по часам лидара от начала потока:
+            # у живого лидара ~0, растёт — источник не успевает (диск, DDS)
+            lag = (now - self.rx_origin[0]) - (stamp - self.rx_origin[1])
+            self.pending.append((self.received, now, msg, gap, self._rx_stats(lag)))
             self.cv.notify()
+
+    def _rx_stats(self, lag):
+        t = self.rx_times
+        dt = np.diff(t) if len(t) > 1 else np.zeros(0)
+        return {"received": self.received,
+                "rx_hz": float(len(dt) / (t[-1] - t[0])) if len(dt) else None,
+                "rx_gap_ms": float(dt.max() * 1000.0) if len(dt) else None,
+                "stream_lag_ms": float(lag * 1000.0)}
 
     # ------------------------------------------------------------ обработка
 
@@ -151,7 +192,7 @@ class ObstacleNode(Node):
                     self.cv.wait(0.2)
                 if not self.running:
                     return
-                seq, t_rx, msg, gap = self.pending.popleft()
+                seq, t_rx, msg, gap, rx = self.pending.popleft()
                 backlog = len(self.pending)
             if gap:
                 # запись проиграна заново или началась другая — путь и трекер с нуля
@@ -168,6 +209,7 @@ class ObstacleNode(Node):
                 self.get_logger().error(f"кадр {seq}: {e!r}")
                 continue
             self.last_seq = seq
+            out.update(rx)
             out.update(frame=seq, skipped=skipped, backlog=backlog, wait_ms=wait_ms,
                        latency_ms=(time.monotonic() - t_rx) * 1000.0,
                        variant=self.variant, frame_id=msg.header.frame_id,
