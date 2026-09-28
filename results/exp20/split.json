@@ -1,0 +1,18 @@
+{
+ "experiment": 20,
+ "branch": "feature/double-track",
+ "base_commit": "db330c9",
+ "frozen_on": "2026-09-26",
+ "note": "Отложенные меряются ОДИН раз, после того как все решения приняты по разработке. Зеркальные копии отложенных — тоже отложены.",
+ "holdout": {
+  "last_synth": ["conv_r300_a45", "conv_r450_a30", "conv_r600_a15"],
+  "Dataset": ["roundT_doubleT"]
+ },
+ "dev": {
+  "last_synth": ["conv_r300_a30", "conv_r450_a15", "conv_r450_a45", "conv_r600_a30", "conv_r600_a45"],
+  "Dataset": ["doubleT_platform", "roundT_pressureGate_roundT", "squareT_platform_squareT_switch",
+              "roundT_squareT_pressureGate_squareT", "doubleT_obstacle"],
+  "Synthetic_data": ["box", "human_smashed", "human_smashed_diff_tunnels"],
+  "new_synth": ["cloud_with_fake_obj"]
+ }
+}

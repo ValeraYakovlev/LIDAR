@@ -212,3 +212,86 @@ def estimate_shift_density(prev, cur, max_shift=MAX_SHIFT, d_max=60.0):
         score[i] = float(np.dot(aa - aa.mean(), bb - bb.mean()) / (n * sa * sb)) if sa * sb > 0 else 0.0
     score = np.maximum(score, 0.0)
     return _peak(score, 0.0, D_BIN)
+
+
+# ---------------------------------------------------------------- рисунок, стоящий на лидаре
+#
+# Эксперимент 20. На синтетике измеритель по плотности даёт ровно ноль при
+# настоящих 1.67 м за кадр (§33): продольную «текстуру» гладкого облака рисуют
+# сами кольца лидара, и этот рисунок едет вместе с сенсором. Он одинаков на
+# каждом кадре в координатах сенсора — значит, остаётся в среднем профиле
+# нескольких прошлых кадров, а текстура тоннеля, уезжающая на Δs за кадр, в нём
+# размывается. Вычтя средний профиль из обоих кадров, коррелируется только то,
+# что стоит в тоннеле. Замер (exp20_ds_probe.py): на синтетике 1.61–1.72 м при
+# истинных 1.667 (было 0); на реальных записях тот же ответ до сантиметра.
+# На стоящем поезде вычитается всё, и сдвиг не измерим — тогда годится только
+# прежний способ, он и даёт честный ноль.
+
+STATIC_K = 10          # кадров в среднем профиле (1 с): на 60 км/ч текстура размыта на 17 м
+STATIC_MIN = 3         # раньше среднего нет — сдвиг не измеряется совсем
+STATIC_EDGES = np.arange(4.0, 60.0 + D_BIN, D_BIN)   # постоянная сетка в координатах сенсора
+
+
+def density_profile(d, edges=STATIC_EDGES):
+    """Профиль плотности на постоянной сетке, тренд 1/r² снят, как у
+    estimate_shift_density."""
+    h = np.histogram(d, bins=edges)[0].astype(float)
+    base = np.convolve(h, np.ones(DENSITY_SMOOTH) / DENSITY_SMOOTH, mode="same")
+    return h / np.maximum(base, 1.0) - 1.0
+
+
+def estimate_shift_moving(prev_prof, cur_prof, past, max_shift=MAX_SHIFT):
+    """Δs по профилям плотности, из которых вычтена составляющая, стоящая на
+    месте относительно лидара (среднее past + prev_prof). Возвращает (сдвиг,
+    контраст), как estimate_shift_density."""
+    m = np.mean(list(past) + [prev_prof], axis=0)
+    a, b = prev_prof - m, cur_prof - m
+    n_steps = int(round(max_shift / D_BIN)) + 1
+    score = np.zeros(n_steps)
+    for i in range(n_steps):
+        aa, bb = a[i:], b[:len(b) - i]
+        n = min(len(aa), len(bb))
+        if n < 30:
+            continue
+        aa, bb = aa[:n], bb[:n]
+        sa, sb = aa.std(), bb.std()
+        score[i] = float(np.dot(aa - aa.mean(), bb - bb.mean()) / (n * sa * sb)) if sa * sb > 1e-9 else 0.0
+    score = np.maximum(score, 0.0)
+    return _peak(score, 0.0, D_BIN)
+
+
+class ShiftMeter:
+    """Δs кадра с вычетом рисунка, стоящего на лидаре, и откатом на прежний способ.
+
+    update(prev_band, band, max_shift) -> сдвиг или None (не измерено):
+    - есть средний профиль и сдвиг по вычету измерим — он;
+    - средний профиль есть, но по вычету не измерим (стоящий поезд, бедная
+      текстура) — прежний способ по плотности;
+    - среднего ещё нет (первые STATIC_MIN кадров после сброса) — не измерено:
+      прежний способ на гладком облаке уверенно выдаёт ноль, а защита от скачка
+      (parallel_path.DS_JUMP), выучив нули, отбрасывала бы потом верные замеры.
+    """
+
+    def __init__(self, k=STATIC_K):
+        self.k = k
+        self.hist = []
+
+    def reset(self):
+        self.hist = []
+
+    def update(self, prev_band, band, max_shift):
+        cur = density_profile(band["d"])
+        prev = self.hist[-1] if self.hist else None
+        out = None
+        if prev is not None and prev_band is not None:
+            past = self.hist[:-1][-(self.k - 1):]
+            if len(past) + 1 >= STATIC_MIN:
+                s, c = estimate_shift_moving(prev, cur, past, max_shift=max_shift)
+                if np.isfinite(s) and c >= MIN_CONTRAST:
+                    out = float(s)
+                else:
+                    est = estimate_shift(prev_band, band, max_shift=max_shift)
+                    if est.get("ok"):
+                        out = float(est["shift"])
+        self.hist = (self.hist + [cur])[-self.k:]
+        return out

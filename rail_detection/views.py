@@ -277,17 +277,20 @@ BAND_K = {"silhouette": 0.0005, "floor": 0.0021, "ceiling": 0.0020}
 BAND_MAX = {"silhouette": 6.0, "floor": 12.0, "ceiling": 12.0}
 
 
-def _predict(hist_d, hist_c, d, fallback):
-    """Ожидаемая ось на глубине d: прямая по середине полос за последние 20 м."""
+def _predictor(hist_d, hist_c, fallback):
+    """Ожидаемая ось как функция глубины: прямая по середине полос за последние
+    20 м. История меняется только между полосами, поэтому прямая строится раз
+    на полосу, а не на каждую её строку (экспер. 22: та же формула, те же числа)."""
     if len(hist_d) >= 3:
         hd, hc = np.asarray(hist_d), np.asarray(hist_c)
         sel = hd > hd[-1] - 20.0
         if sel.sum() >= 3 and np.ptp(hd[sel]) > 3.0:
             k, b = np.polyfit(hd[sel], hc[sel], 1)
-            return k * d + b
+            return lambda d: k * d + b
     if hist_c:
-        return hist_c[-1]
-    return fallback(d)
+        last = hist_c[-1]
+        return lambda d: last
+    return fallback
 
 
 def band_edges(mask, grid, method, weight=None, gap=0.6, min_width=0.0,
@@ -324,8 +327,9 @@ def band_edges(mask, grid, method, weight=None, gap=0.6, min_width=0.0,
         j = max(j, i + 1)
         prof = np.zeros(nx)
         dsum, wsum = 0.0, 0.0
+        predict = _predictor(hist_d, hist_c, fallback)
         for row in range(i, j):
-            pred = _predict(hist_d, hist_c, dc[row], fallback)
+            pred = predict(dc[row])
             cols = np.where(mask[row] & (np.abs(xc - pred) < halfwin))[0]
             if len(cols) == 0:
                 continue
@@ -336,7 +340,7 @@ def band_edges(mask, grid, method, weight=None, gap=0.6, min_width=0.0,
             wsum += w.sum()
         if wsum > 0:
             d_band = dsum / wsum
-            pred = _predict(hist_d, hist_c, d_band, fallback)
+            pred = predict(d_band)
             occ = np.where(prof > 0)[0]
             if mode == "mass":
                 cum = np.cumsum(prof) / prof.sum()

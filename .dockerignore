@@ -1,0 +1,7 @@
+# В образ идут только код и зависимости — данные и выходы остаются снаружи.
+*
+!requirements.txt
+!rail_detection
+!ros2
+!docker
+**/__pycache__

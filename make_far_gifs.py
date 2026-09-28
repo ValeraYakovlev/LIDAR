@@ -37,6 +37,7 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Polygon
 from PIL import Image
 
+from exp20_split import guard
 from exp_far_truth import track_length
 from make_gauge_gifs import X_LIM, _crop, _u8
 from rail_detection import bag_path, frame_count, iter_frames
@@ -52,9 +53,10 @@ N_SLICE = 6000
 DEFAULT_SLICE = 60.0
 
 
-def gauge_poly(p, mg=0.0):
-    """Контур габарита в (u, v) — с вырезом под контактный рельс и запасом mg."""
-    h, top, b = p["half"] - mg, p["top"] - mg, p["bottom"] + mg
+def gauge_poly(p, mg=0.0, mgb=None):
+    """Контур габарита в (u, v) — с вырезом под контактный рельс и запасом mg
+    (снизу — mgb, если у варианта свой запас снизу, §34 18б)."""
+    h, top, b = p["half"] - mg, p["top"] - mg, p["bottom"] + (mg if mgb is None else mgb)
     if p.get("low_half") is None:
         return np.array([(-h, b), (h, b), (h, top), (-h, top)])
     lh, vs = p["low_half"] - mg, p["v_step"]
@@ -62,27 +64,57 @@ def gauge_poly(p, mg=0.0):
                      (-h, vs), (-lh, vs)])
 
 
-def collect(dataset, bag, every, p, max_frames=None):
+CX_D = np.arange(0.0, 151.0, 5.0)   # глубины, на которых в статистику пишется центр габарита
+
+
+def gauge_centre(res, dd):
+    """Центр габарита вбок на глубинах dd: путь плюс поправка позы вагона (uc)."""
+    x_p, psi, arc = path_at(res["path"], dd)
+    pg_, _, uc, _ = res["pose_curves"]
+    return x_p + np.interp(arc, pg_, uc) / np.cos(psi), psi, arc
+
+
+def _extra_stat(idx, fr):
+    st = {"idx": idx, "ok": fr is not None}
+    if fr is not None:
+        st.update({"raw": [c["dist"] for c in fr["clusters"]], "conf": fr["confirmed"],
+                   "limit": fr["limit"]})
+    return st
+
+
+def collect(dataset, bag, every, p, max_frames=None, extra=()):
+    """extra — другие варианты детектора на том же проходе трекера: для них
+    пишутся только находки (экспер. 20: детектор дешёвый, трекер дорогой)."""
     pg = ParallelGauge()
     det = fd.FarDetector(p)
+    dets_x = {v: fd.FarDetector(fd.VARIANTS[v]) for v in extra}
+    stats_x = {v: [] for v in extra}
     rng = np.random.default_rng(0)
     recs, stats = [], []
     for idx, points, n_total in iter_frames(bag_path(dataset, bag), stride=1,
                                            max_frames=max_frames):
         res = pg.update(points, steps=1)
         fr = det.update(res)
+        for v, dx in dets_x.items():
+            stats_x[v].append(_extra_stat(idx, dx.update(res)))
         st = {"idx": idx, "ok": fr is not None}
         if fr is not None:
             st.update({"raw": [c["dist"] for c in fr["clusters"]], "conf": fr["confirmed"],
                        "ds": res["track"]["ds"], "limit": fr["limit"],
                        "clusters": fr["clusters"],
-                       "vp": [fr["vinfo"]["a"], fr["vinfo"]["b"]]})
+                       "vp": [fr["vinfo"]["a"], fr["vinfo"]["b"]],
+                       # экспер. 20: путь для сверки с истинным (синтетика, /tf)
+                       "cx": gauge_centre(res, CX_D)[0].tolist(),
+                       "origin": res["track"]["origin"], "ds_meas": bool(res["track"]["ds_measured"]),
+                       "cost": res["track"]["cost"], "reach": res["reach"],
+                       "alt_cost": None if res["track"].get("alt") is None else res["track"]["alt"]["cost"],
+                       "alt_dx": None if fr["alt_dx"] is None else fr["alt_dx"].tolist()})
         stats.append(st)
         if idx % every == 0:
             recs.append(_render_data(idx, n_total, res, fr, p, rng))
         print(f"\r  {bag}: кадр {idx}/{n_total}", end="", flush=True)
     print()
-    return recs, stats
+    return recs, stats, stats_x
 
 
 def _render_data(idx, n_total, res, fr, p, rng):
@@ -92,9 +124,7 @@ def _render_data(idx, n_total, res, fr, p, rng):
     tr = res["track"]
     c = tr["curve"]
     dd = np.linspace(2, D_SHOW, 300)
-    x_p, psi, arc = path_at(res["path"], dd)
-    pg_, _, uc, _ = res["pose_curves"]
-    centre = x_p + np.interp(arc, pg_, uc) / np.cos(psi)
+    centre, psi, arc = gauge_centre(res, dd)
     half = p["half"] - fd.margin(arc, p) if p.get("m_slope") else np.full_like(arc, p["half"])
     half = np.maximum(half, 0.0)
     corridor = np.column_stack([centre - half / np.cos(psi), centre, centre + half / np.cos(psi), dd])
@@ -141,6 +171,7 @@ def _render_data(idx, n_total, res, fr, p, rng):
         "slice": np.column_stack([ug[sel], vv[sel]]).astype(np.float32),
         "slice_dist": float(dist), "slice_ht": float(ht),
         "mg": float(fd.margin(np.array([dist]), p)[0]) if p.get("m_slope") else 0.0,
+        "mgb": float(np.max(fd.margin_bottom(np.array([dist]), p))) if p.get("m_slope") else 0.0,
         "side": fr["side"].astype(np.float32), "levels": fr["vinfo"]["levels"],
         "h_ceil": fr["vinfo"]["h_ceil"],
         "prof": (ss, fr["delta"](ss) if fr["delta"] is not None else np.zeros_like(ss)),
@@ -159,6 +190,13 @@ def truth_tracks(tag, bag, stats):
     if tag == "new_synth":
         ds = np.array([s.get("ds", np.nan) for s in stats], float)
         S = track_length({"ds": ds})
+        # предметы размечены по сумме Δs эталона (кэш экспер. 18) — по ней и рисовать,
+        # иначе при другом измерителе Δs полосы разметки уезжают от находок (экспер. 20)
+        ref = Path("output/exp18_cache/new_synth/cloud_with_fake_obj.npz")
+        if ref.exists():
+            S_ref = track_length({"ds": np.load(ref)["ds"]})
+            if len(S_ref) == len(S):
+                S = S_ref
         info = json.load(open("results/exp18/new_synth_objects.json"))
         objs = list(info["objects"])
         hold = Path("results/exp18/new_synth_holdout_objects.json")
@@ -184,7 +222,7 @@ def truth_tracks(tag, bag, stats):
     return [], None, None
 
 
-def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80):
+def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80, tpath=None):
     xs = np.array([s["idx"] for s in stats], float)
     fig = Figure(figsize=(12.0, 9.2), dpi=dpi)
     canvas = FigureCanvasAgg(fig)
@@ -230,6 +268,15 @@ def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80):
             axT.plot(cr[vis, 1], cr[vis, 3], c="#d6336c", lw=1.2, ls="--", zorder=5)
             axT.plot(cr[vis, 0], cr[vis, 3], c="#d1495b", lw=1.4, zorder=5)
             axT.plot(cr[vis, 2], cr[vis, 3], c="#d1495b", lw=1.4, zorder=5)
+            if tpath is not None and r["idx"] < len(tpath[1]):
+                # экспер. 20: истинная ось пути (синтетика, по /tf) — алгоритм её не видит
+                tx = tpath[1][r["idx"]]
+                ok = np.isfinite(tx) & (tpath[0] >= 2.0) & (tpath[0] < vis_d)
+                axT.plot(tx[ok], tpath[0][ok], c="#1c7ed6", lw=1.0, alpha=0.9, zorder=5)
+                err = np.interp([50.0, 75.0, 100.0], cr[:, 3], cr[:, 1]) - \
+                    np.interp([50.0, 75.0, 100.0], tpath[0], tx, left=np.nan, right=np.nan)
+                head += "\nось габарита минус истинная на 50 / 75 / 100 м: " + \
+                    " / ".join("—" if not np.isfinite(e) else f"{e:+.2f}" for e in err) + " м (синяя — истинная)"
             h = r["hits"]
             h = h[h[:, 1] < vis_d] if len(h) else h
             if len(h):
@@ -254,12 +301,12 @@ def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80):
                 sl = r["slice"]
                 axS.scatter(sl[:, 0], sl[:, 1], s=2.0, c="#9aa5b1", alpha=0.6, linewidths=0)
                 poly = gauge_poly(p)
-                inside = matplotlib.path.Path(gauge_poly(p, r["mg"])).contains_points(sl)
+                inside = matplotlib.path.Path(gauge_poly(p, r["mg"], r["mgb"])).contains_points(sl)
                 if inside.any():
                     axS.scatter(sl[inside, 0], sl[inside, 1], s=6, c="#d1495b", linewidths=0)
                 axS.add_patch(Polygon(poly, closed=True, fill=False, edgecolor="#d1495b", lw=1.6))
                 if r["mg"] > 0.005:
-                    axS.add_patch(Polygon(gauge_poly(p, r["mg"]), closed=True, fill=False,
+                    axS.add_patch(Polygon(gauge_poly(p, r["mg"], r["mgb"]), closed=True, fill=False,
                                           edgecolor="#d1495b", lw=1.0, ls="--"))
                 axS.set_title(f"плоскость ⊥ пути на {r['slice_dist']:.0f} м (±{r['slice_ht']:.1f} м); "
                               f"пунктир — габарит, сжатый на запас {r['mg']:.2f} м", fontsize=8)
@@ -287,7 +334,8 @@ def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80):
             axV.plot(ss[keep], dlt[keep], c="#ffd43b", lw=1.6)
             mgv = fd.margin(ss, p) if p.get("m_slope") else 0 * ss
             axV.plot(ss[keep], (dlt + p["top"] - mgv)[keep], c="#51cf66", lw=1.0)
-            axV.plot(ss[keep], (dlt + p["bottom"] + mgv)[keep], c="#51cf66", lw=1.0)
+            mgvb = np.broadcast_to(fd.margin_bottom(ss, p), ss.shape) if p.get("m_slope") else 0 * ss
+            axV.plot(ss[keep], (dlt + p["bottom"] + mgvb)[keep], c="#51cf66", lw=1.0)
             L = r["levels"]
             kl = L[:, 0] < c
             axV.scatter(L[kl, 0], L[kl, 1], s=8, c="#74c0fc", zorder=5)
@@ -348,19 +396,31 @@ def render(recs, stats, bag, p, truth, S=None, S_B=None, dpi=80):
     return images
 
 
-def build(dataset, bag, out_dir, target, fps, max_frames, variant, holdout_cut):
+def build(dataset, bag, out_dir, target, fps, max_frames, variant, holdout_cut, extra=()):
     p = fd.VARIANTS[variant]
     n = frame_count(bag_path(dataset, bag))
     every = max(1, round(n / target))
     print(f"\n=== {bag}: все {n} кадров, в GIF каждый {every}-й; вариант {variant} ===")
-    recs, stats = collect(dataset, bag, every, p, max_frames)
+    recs, stats, stats_x = collect(dataset, bag, every, p, max_frames, extra)
+    for v, sx in stats_x.items():
+        (out_dir / v).mkdir(parents=True, exist_ok=True)
+        with open(out_dir / v / f"{bag}.json", "w") as f:
+            json.dump({"bag": bag, "variant": v, "params": fd.VARIANTS[v], "stats": sx}, f,
+                      ensure_ascii=False, default=float)
     tag = "new_synth" if holdout_cut else Path(dataset).name
     truth, S, S_B = truth_tracks(tag, bag, stats)
     if holdout_cut:
         truth = [t for t in truth]
     else:
         S = S_B = None
-    images = render(recs, stats, bag, p, truth, S, S_B)
+    tp = Path(f"output/exp20_truth/{bag}.npz")
+    tpath = None
+    if tp.exists() and "last_synth" in str(dataset).lower():
+        z = np.load(tp)
+        tpath = (z["D"], z["path_x"])
+        if "reversed" in str(dataset):
+            tpath = (z["D"], -z["path_x"])
+    images = render(recs, stats, bag, p, truth, S, S_B, tpath=tpath)
     out_dir.mkdir(parents=True, exist_ok=True)
     suffix = "_dev" if holdout_cut else ""
     path = out_dir / f"{bag}{suffix}.gif"
@@ -384,13 +444,15 @@ def main():
     a.add_argument("--fps", type=float, default=8.0)
     a.add_argument("--holdout-cut", action="store_true",
                    help="New_synth: вырезать всё дальше S_B (разработка)")
+    a.add_argument("--holdout", action="store_true",
+                   help="отложенный замер: разрешить отложенные записи эксперимента 20")
+    a.add_argument("--extra-variants", nargs="*", default=[],
+                   help="ещё варианты детектора на том же проходе — только находки, в <out>/<вариант>/")
     args = a.parse_args()
+    guard(args.bags, args.holdout)
     for bag in args.bags:
-        if bag == "roundT_squareT_pressureGate_squareT" and "/reversed" not in args.dataset \
-                and args.variant != "final":
-            raise SystemExit("отложенный прогон — только финальным вариантом")
         build(args.dataset, bag, Path(args.out), args.target_frames, args.fps, args.max_frames,
-              args.variant, args.holdout_cut)
+              args.variant, args.holdout_cut, args.extra_variants)
 
 
 if __name__ == "__main__":
