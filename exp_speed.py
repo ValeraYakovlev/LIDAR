@@ -127,12 +127,17 @@ def _close(a, b):
     return bool(np.all(both_nan | (np.abs(a - b) <= TOL)))
 
 
+IGNORE = ()      # поля, не входящие в «ответ тот же» (--ignore; экспер. 23: alt_x между платформами)
+
+
 def compare(ref, new):
     """Первое расхождение: (кадр, поле, эталон, сейчас) или None."""
     if len(ref) != len(new):
         return (-1, "число кадров", len(ref), len(new))
     for k, (a, b) in enumerate(zip(ref, new)):
         for key in sorted(set(a) | set(b)):
+            if key in IGNORE:
+                continue
             x, y = a.get(key), b.get(key)
             if key in ARRAYS:
                 if (x is None) != (y is None) or (x is not None and not _close(x, y)):
@@ -165,9 +170,9 @@ def compare(ref, new):
 
 
 def _job(args):
-    global GOLDEN, VARIANTS
-    mode, dataset, bag, max_frames, workers, process, golden, variants = args
-    GOLDEN, VARIANTS = Path(golden), tuple(variants)
+    global GOLDEN, VARIANTS, IGNORE
+    mode, dataset, bag, max_frames, workers, process, golden, variants, ignore = args
+    GOLDEN, VARIANTS, IGNORE = Path(golden), tuple(variants), tuple(ignore)
     from rail_detection import parallel as par
     par.set_workers(workers)
     par.set_process(process)
@@ -377,6 +382,8 @@ def main():
     a.add_argument("--golden", default=str(GOLDEN), help="папка эталона")
     a.add_argument("--variants", nargs="*", default=list(VARIANTS),
                    help="варианты детектора в эталоне")
+    a.add_argument("--ignore", nargs="*", default=[],
+                   help="поля вне сверки: alt_x — между платформами (§39: неустойчив к последнему биту)")
     a.add_argument("--max-frames", type=int, default=None)
     a.add_argument("--jobs", type=int, default=5)
     a.add_argument("--label", default="ref")
@@ -411,7 +418,7 @@ def main():
         raise SystemExit("New_synth заморожена: сверка на ней — только с --frozen, в конце")
     with ProcessPoolExecutor(args.jobs) as ex:
         for line in ex.map(_job, [(args.mode, d, b, args.max_frames, args.workers, args.process,
-                                   args.golden, args.variants) for d, b in jobs]):
+                                   args.golden, args.variants, args.ignore) for d, b in jobs]):
             print(line, flush=True)
 
 
