@@ -57,6 +57,7 @@ Visualization Manager:
         Reliability Policy: Reliable
       Namespaces:
         gauge: true
+        status: true
         obstacle: true
         obstacle_text: true
       Value: true
@@ -78,10 +79,10 @@ Visualization Manager:
       Target Frame: <Fixed Frame>
       Focal Point:
         X: 0
-        Y: -45
-        Z: 0
-      Distance: 75
-      Pitch: 0.35
+        Y: -30
+        Z: 1
+      Distance: 45
+      Pitch: 0.3
       Yaw: 1.5708
       Near Clip Distance: 0.01
       Value: Orbit (rviz)

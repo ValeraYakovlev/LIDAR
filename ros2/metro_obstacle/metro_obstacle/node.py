@@ -207,10 +207,25 @@ class ObstacleNode(Node):
     def _markers(self, header, out, geom):
         arr = MarkerArray()
         arr.markers.append(Marker(header=header, action=Marker.DELETEALL))
-        if geom is None:
-            return arr
         colour = RED if out["detected"] else GREEN
         life = Duration(sec=1)
+
+        # крупная надпись над путём впереди лидара — ответ кадра; латиницей:
+        # шрифт сцены RViz2 (Ogre) кириллицу не рисует
+        if not out["ok"]:
+            head, hc = "NO TRACK", WHITE
+        elif out["detected"]:
+            head, hc = f"OBSTACLE {out['distance']:.1f} m", RED
+        else:
+            head, hc = f"CLEAR to {out['limit']:.0f} m", GREEN
+        hud = Marker(header=header, ns="status", id=0, type=Marker.TEXT_VIEW_FACING,
+                     action=Marker.ADD, lifetime=life, color=hc, text=head)
+        hud.pose.position.y, hud.pose.position.z = -15.0, 6.0
+        hud.pose.orientation.w = 1.0
+        hud.scale.z = 2.0
+        arr.markers.append(hud)
+        if geom is None:
+            return arr
 
         lines = Marker(header=header, ns="gauge", id=0, type=Marker.LINE_LIST,
                        action=Marker.ADD, lifetime=life, color=colour)
@@ -244,11 +259,11 @@ class ObstacleNode(Node):
             arr.markers.append(box)
             txt = Marker(header=header, ns="obstacle_text", id=k, type=Marker.TEXT_VIEW_FACING,
                          action=Marker.ADD, lifetime=life, color=WHITE,
-                         text=f"{b['dist']:.1f} м")
+                         text=f"{b['dist']:.1f} m")
             txt.pose.position.x, txt.pose.position.y = cx, cy
             txt.pose.position.z = cz + float(b["size"][2]) / 2 + 1.0
             txt.pose.orientation.w = 1.0
-            txt.scale.z = 1.2
+            txt.scale.z = 1.8
             arr.markers.append(txt)
         return arr
 
