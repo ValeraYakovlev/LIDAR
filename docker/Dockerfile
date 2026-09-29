@@ -65,8 +65,12 @@ pp._search_side(s, np.full(40, 1.8), np.ones(40), 1.8, pp.TUKEY * pp.SIGMA_EDGE)
 ENV PYTHONPATH=/opt/metro \
     RAIL_WORKERS=4 \
     RAIL_PROCESS=1 \
+    RAIL_JIT=1 \
     MPLBACKEND=Agg
 
+# Журнал кадров — в /out (смонтировать папку хоста: -v "$PWD/out":/out):
+# на каждый запуск узла свой файл detections_<дата>_<время>.jsonl.
+RUN mkdir -p /out
 COPY docker/entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["ros2", "launch", "metro_obstacle", "detector.launch.py"]
+CMD ["ros2", "launch", "metro_obstacle", "detector.launch.py", "log_file:=/out"]

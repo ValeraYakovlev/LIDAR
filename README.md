@@ -19,27 +19,47 @@ ROS 2 Humble).
 
 ## Быстрый запуск
 
-Нужны Docker и папка записи ROS 2 bag (`metadata.yaml` + `.db3`).
+Нужны Docker, git и папка записи ROS 2 bag (`metadata.yaml` + `.db3`).
 
 ```bash
-# 1. сборка (все зависимости ставятся внутри; первый раз — несколько минут)
+# 0. код решения
+git clone https://github.com/ValeraYakovlev/LIDAR.git && cd LIDAR
+
+# 1. сборка (все зависимости ставятся внутри; первый раз — 10–15 минут)
 docker build -f docker/Dockerfile -t metro-obstacle .
 
-# 2. узел обнаружения (ждёт облако; топик лидара находит сам)
-docker run --rm --net=host --ipc=host metro-obstacle
+# 2. узел обнаружения (ждёт облако; топик лидара находит сам); результаты — в ./out
+docker run --rm --net=host --ipc=host -v "$PWD/out":/out metro-obstacle
 
 # 3. в другом терминале — проигрывание записи
-docker run --rm --net=host --ipc=host -v /путь/к/doubleT_obstacle:/bag:ro \
+docker run --rm --net=host --ipc=host -v /путь/к/записи:/bag:ro \
     metro-obstacle ros2 bag play /bag --read-ahead-queue-size 10 --delay 3 --wait-for-all-acked 5000
 ```
 
-В терминале узла — строка на каждый кадр записи: ответ и время его обработки.
-Узел обрабатывает **каждый кадр, ни один не пропускается** (`queue=all`):
+При старте узел пишет, что включено: `ускорения: потоков на кадр 4,
+процессов-помощников 3, numba да` (многопоточная обработка — по умолчанию в
+образе). Дальше в терминале узла — строка на каждый кадр записи: ответ и время
+его обработки. Узел обрабатывает **каждый кадр, ни один не пропускается**
+(`queue=all`):
 
 ```
 кадр 19: ПРЕПЯТСТВИЕ 55.6 м — 172 мс, в очереди 12
 кадр 20: путь свободен (видно до 148 м) — 168 мс, в очереди 13
 ```
+
+### Где результаты прогона
+
+- **`./out/detections_<дата>_<время>.jsonl`** — журнал: на каждый запуск узла
+  свой файл (папка `out` появляется рядом, в папке запуска `docker run`; файлы
+  создаются от root). Строка JSON на кадр: `frame` — номер кадра, `detected`,
+  `distance` — до ближайшего препятствия, м вдоль пути, `confirmed` — все
+  подтверждённые, `limit` — до скольких метров построен путь, `proc_ms` — время
+  обработки, `latency_ms` — задержка ответа, `backlog` — кадров в очереди.
+- Итог прогона — сколько кадров пришло и обработано, время обработки, где
+  найдено препятствие:
+  `python3 scripts/demo_summary.py out/detections_<дата>_<время>.jsonl`.
+- Узел останавливается Ctrl+C — после того как разобрал очередь (в строке
+  последнего кадра нет «в очереди»).
 
 Если кадр обрабатывается дольше периода лидара (100 мс), кадры ждут в очереди,
 и ответ отстаёт от записи («в очереди N»); после конца записи узел дорабатывает
@@ -109,7 +129,7 @@ RViz2 — ffmpeg в образе `viz`, `VIZ_LAYOUT=video`), галерея GIF 
 | `variant` | `low_rest_b0` | вариант детектора (`rail_detection/far_detect.py`, `VARIANTS`) |
 | `queue` | `all` | `all` — все кадры по порядку, ни один не пропускается (при медленной обработке растёт очередь и задержка); `latest` — только самый свежий кадр, задержка не растёт |
 | `preview_stride` | `10` | прореживание облака для показа; `0` — не публиковать |
-| `log_file` | — | журнал JSON Lines по кадрам |
+| `log_file` | `/out` (в образе) | журнал JSON Lines по кадрам; папка — свой файл `detections_<дата>_<время>.jsonl` на каждый запуск |
 
 Переменные окружения (в образе уже выставлены):
 
@@ -120,7 +140,7 @@ RViz2 — ffmpeg в образе `viz`, `VIZ_LAYOUT=video`), галерея GIF 
 | `RAIL_JIT` | `1` | скомпилированный numba перебор ступенек стен; `0` — прежний код на numpy (ответ тот же) |
 
 Пример:
-`docker run --rm --net=host --ipc=host -v $PWD/out:/out metro-obstacle ros2 launch metro_obstacle detector.launch.py queue:=all log_file:=/out/detections.jsonl`.
+`docker run --rm --net=host --ipc=host -v "$PWD/out":/out metro-obstacle ros2 launch metro_obstacle detector.launch.py queue:=latest log_file:=/out`.
 
 ---
 

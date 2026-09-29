@@ -14,7 +14,7 @@ ARGS = {
     "variant": ("low_rest_b0", "вариант детектора (rail_detection.far_detect.VARIANTS)"),
     "queue": ("all", "all — все кадры по порядку, latest — только свежий кадр"),
     "preview_stride": ("10", "прореживание облака для показа; 0 — не публиковать"),
-    "log_file": ("", "JSON Lines по кадрам"),
+    "log_file": ("", "JSON Lines по кадрам; папка — свой файл detections_<время>.jsonl на запуск"),
     "rviz": ("false", "запустить RViz2"),
 }
 

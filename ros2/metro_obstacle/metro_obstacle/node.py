@@ -24,6 +24,7 @@ import array
 import collections
 import json
 import math
+import os
 import threading
 import time
 
@@ -84,7 +85,7 @@ class ObstacleNode(Node):
         self.declare_parameter("variant", DEFAULT_VARIANT)
         self.declare_parameter("queue", "all")             # all | latest
         self.declare_parameter("preview_stride", 10)       # 0 — не публиковать облако
-        self.declare_parameter("log_file", "")             # JSON Lines по кадрам
+        self.declare_parameter("log_file", "")             # JSON Lines по кадрам; папка — свой файл на запуск
         self.declare_parameter("reset_gap", 2.0)           # с: пауза в потоке — новая запись
 
         gp = lambda n: self.get_parameter(n).value
@@ -98,7 +99,17 @@ class ObstacleNode(Node):
         t0 = time.monotonic()
         Pipeline.warm_up()
         self.get_logger().info(f"конвейер прогрет за {time.monotonic() - t0:.1f} с")
-        self.log = open(gp("log_file"), "a", encoding="utf-8") if gp("log_file") else None
+        from rail_detection import jit
+        from rail_detection import parallel as par
+        self.get_logger().info(
+            f"ускорения: потоков на кадр {par.workers()}, процессов-помощников "
+            f"{par.N_HELPERS if par.use_process() else 0}, numba {'да' if jit.ENABLED else 'нет'}")
+        path = gp("log_file")
+        if path and os.path.isdir(path):      # папка (в образе — /out): свой файл на каждый запуск
+            path = os.path.join(path, time.strftime("detections_%Y%m%d_%H%M%S.jsonl"))
+        self.log = open(path, "a", encoding="utf-8") if path else None
+        if self.log:
+            self.get_logger().info(f"журнал кадров: {path}")
 
         self.pub_det = self.create_publisher(Bool, "/obstacle/detected", 10)
         self.pub_dist = self.create_publisher(Float32, "/obstacle/distance", 10)
