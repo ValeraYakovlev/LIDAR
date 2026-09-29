@@ -11,8 +11,8 @@ from launch_ros.actions import Node
 
 ARGS = {
     "topic": ("auto", "топик PointCloud2; auto — найти самому"),
-    "variant": ("final", "вариант детектора (rail_detection.far_detect.VARIANTS)"),
-    "queue": ("latest", "latest — свежий кадр, all — все кадры по порядку"),
+    "variant": ("low_rest_b0", "вариант детектора (rail_detection.far_detect.VARIANTS)"),
+    "queue": ("all", "all — все кадры по порядку, latest — только свежий кадр"),
     "preview_stride": ("10", "прореживание облака для показа; 0 — не публиковать"),
     "log_file": ("", "JSON Lines по кадрам"),
     "rviz": ("false", "запустить RViz2"),

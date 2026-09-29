@@ -15,9 +15,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN mkdir /tmp/apt-off && mv /etc/apt/sources.list.d/* /tmp/apt-off/ \
     && apt-get update && apt-get install -y --no-install-recommends \
         tigervnc-standalone-server novnc websockify openbox fonts-dejavu \
+        xterm ffmpeg \
     && mv /tmp/apt-off/* /etc/apt/sources.list.d/ && rm -rf /tmp/apt-off /var/lib/apt/lists/*
 
 COPY ros2/metro_obstacle/rviz/metro.rviz /opt/viz/metro.rviz
+COPY docker/status_view.py docker/make_video.sh /opt/viz/
 COPY docker/viz.sh /viz.sh
 ENV VIZ_GEOMETRY=1600x900 VIZ_PORT=6080 VIZ_BIND=127.0.0.1 FIXED_FRAME=lidar_livox
 CMD ["/viz.sh"]

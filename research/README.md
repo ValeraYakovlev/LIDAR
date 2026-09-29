@@ -30,22 +30,22 @@ export PYTHONPATH=..
 
 ```bash
 # «ответ тот же» после любой правки конвейера — эталон текущего кода (§38–§39)
-python exp_speed.py check --all --golden output/exp22_golden --variants final low_rest_b0
-python exp_speed.py check --all --golden output/exp22_golden --variants final low_rest_b0 --workers 4 --process
+python exp_speed.py check --all --golden output/exp22_golden --variants low_rest_b0
+python exp_speed.py check --all --golden output/exp22_golden --variants low_rest_b0 --workers 4 --process
 #   между платформами (Mac ↔ Linux) — с --ignore alt_x (§39)
 python exp_speed.py golden ...                 # новый эталон (до первой правки, заморозить суммами)
 python exp_speed.py bench --label my --workers 4 --process    # время кадра по стадиям
 
 # мерило обнаружения по кэшу: дальность, непрерывность, ложные (§34, §37)
-python exp_far_eval.py --summary --variants final low_rest_b0
-python exp21_eval.py --variants final low_rest_b0   # низкие предметы, все 32 записи
+python exp_far_eval.py --summary --variants low_rest_b0
+python exp21_eval.py --variants low_rest_b0   # низкие предметы, все 32 записи
 
 # GIF по записи — отсматривать самому до вывода о результате
 RAIL_WORKERS=4 RAIL_PROCESS=1 python make_far_gifs.py --dataset /Volumes/T7/Dataset \
-    --bags doubleT_obstacle --variant final --out "output/Opus 5.5/check"
+    --bags doubleT_obstacle --variant low_rest_b0 --out "output/Opus 5.5/check"
 
 # зеркальная проверка (§32)
-python exp_far_mirror.py --variant final
+python exp_far_mirror.py --variant low_rest_b0
 
 # numba против numpy бит в бит (§39)
 python exp23_jit_check.py

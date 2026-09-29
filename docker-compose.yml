@@ -21,7 +21,7 @@ services:
       - ${OUT:-./output/ros}:/out
     command: >
       ros2 launch metro_obstacle detector.launch.py
-      variant:=${VARIANT:-final} queue:=${QUEUE:-latest} topic:=${TOPIC:-auto}
+      variant:=${VARIANT:-low_rest_b0} queue:=${QUEUE:-all} topic:=${TOPIC:-auto}
       log_file:=/out/detections.jsonl
 
   player:
@@ -33,7 +33,11 @@ services:
     # Очередь упреждающего чтения — 10 кадров: в Humble плеер сначала заполняет
     # её целиком (по умолчанию 1000 сообщений — вся запись, 24 МБ кадр), и это
     # время засчитывается в проигрывание — первые секунды записи уходят залпом.
-    command: ros2 bag play /bag --rate ${RATE:-1.0} --read-ahead-queue-size ${READ_AHEAD:-10}
+    # --delay 3: узел успевает найти плеер до первого кадра — иначе первые кадры теряются;
+    # --wait-for-all-acked: плеер не выходит, пока узел не получил последний кадр.
+    command: >
+      ros2 bag play /bag --rate ${RATE:-1.0} --read-ahead-queue-size ${READ_AHEAD:-10}
+      --delay 3 --wait-for-all-acked 5000
 
   offline:
     image: metro-obstacle:latest
@@ -41,7 +45,7 @@ services:
     volumes:
       - ${BAG:-./bag}:/bag:ro
       - ${OUT:-./output/ros}:/out
-    command: ros2 run metro_obstacle offline /bag --variant ${VARIANT:-final} --out /out/offline.jsonl
+    command: ros2 run metro_obstacle offline /bag --variant ${VARIANT:-low_rest_b0} --out /out/offline.jsonl
 
   viz:
     <<: *ros
@@ -50,3 +54,7 @@ services:
     environment:
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
       FIXED_FRAME: ${FIXED_FRAME:-lidar_livox}
+      VIZ_LAYOUT: ${VIZ_LAYOUT:-}
+      VIZ_GEOMETRY: ${VIZ_GEOMETRY:-1600x900}
+    volumes:
+      - ${OUT:-./output/ros}:/out

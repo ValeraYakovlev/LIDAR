@@ -215,25 +215,27 @@ validation_run_v6.json  — roundT_squareT_pressureGate_squareT ЦЕЛИКОМ, 
 
 ### Обнаружение (rail_detection/far_detect.py, §34)
 
-`FarDetector(VARIANTS["final"])` поверх результата `ParallelGauge.update`:
+`FarDetector(VARIANTS["low_rest_b0"])` (вариант решения по умолчанию) поверх результата
+`ParallelGauge.update`:
 
 - **габарит кузова 81-717**: 2.67 × 3.65 м от 0.10 м над головками; ниже 0.5 м
   ±1.1 м — вырез под контактный рельс (он стоит на u ≈ 1.25–1.5 м);
-- **запас по погрешности пути**: габарит сжимается на 0.008·(D − 40) м —
-  90-й перцентиль расхождения гипотез пути «память / заново»;
-- **профиль пути по высоте из вида сбоку**: пол, где виден, дальше свод минус его
-  высота над головками вблизи (уклоны впереди);
+- **запас по погрешности пути**: бока и верх габарита сжимаются на
+  0.008·(D − 40) м — 90-й перцентиль расхождения гипотез пути «память / заново»;
+  низ (0.10 м) — без запаса;
+- **профиль пути по высоте из вида сбоку**: пол, где виден (относительно своего
+  уровня на 15–35 м, §36), дальше свод минус его высота над головками вблизи;
 - **предел пути** там, где гипотезы расходятся больше 0.3 м;
 - **скопления** DBSCAN в угловых координатах, порог — от шага лучей лидара на
-  предмет 0.25 × 0.25 м;
+  предмет 0.25 × 0.25 м; у предмета на пути — от его части выше низа габарита
+  (`need_rest`, §37);
 - **подтверждение каждого скопления**: на своём месте тоннеля в 3 из 5 кадров
   (`TrackWatch`), несколько препятствий одновременно.
 
-Варианты: `final` — эталон обнаружения, проверен отложенными данными (тег
-`far-detection-v1`); `final_b2` — запас снизу 0.002·(D − 40), находит коробку на
-рельсе в `doubleT_obstacle` (112 из 125 кадров против 0), отложенными данными НЕ
-проверен. `make_far_gifs.py` не даёт гнать `roundT_squareT_pressureGate_squareT`
-иначе как вариантом `final` (защита отложенного прогона).
+`low_rest_b0` находит коробку на рельсе в `doubleT_obstacle` (92 из 125 кадров),
+новых ложных на 32 записях нет (§37); слепая проверка на FINAL_STEP — 0 ложных
+подтверждённых (§40). Остальные варианты в `VARIANTS` — история экспериментов
+(§34–§37), в решении не используются.
 
 ### Ускорение (rail_detection/parallel.py, fastops.py, §35)
 
@@ -347,7 +349,7 @@ validation_run_v6.json  — roundT_squareT_pressureGate_squareT ЦЕЛИКОМ, 
 | `rail-guided-v1` | §15: rail-guided геометрия, координаты пути, одна форма на обе стены |
 | `wall-parallel-v1` | §31–§32: путь и стены одной кривой + зеркальная проверка — эталон пути |
 | `speed-ref` | §35: точка отсчёта ускорения — эталон «ответ тот же» |
-| `far-detection-v1` | §34: габарит поезда, дальние скопления, профиль по высоте — **текущий эталон обнаружения** (вариант `final`, проверен отложенным) |
+| `far-detection-v1` | §34: габарит поезда, дальние скопления, профиль по высоте (код отложенного замера §34) |
 | `double-track-v1` | §36: код отложенного замера выезда в двухпутный |
 | `speed-exact-ref` | §38: точка отсчёта ускорения без повторов — эталон `output/exp22_golden` |
 | `numba-ref` | §39: точка отсчёта numba (ответ = `speed-exact-ref`) |
@@ -394,19 +396,19 @@ validation_run_v6.json  — roundT_squareT_pressureGate_squareT ЦЕЛИКОМ, 
 ```bash
 # GIF по записи: путь, габарит поезда, вид сбоку, лента находок (ускоренный режим)
 RAIL_WORKERS=4 RAIL_PROCESS=1 python make_far_gifs.py --dataset /Volumes/T7/Dataset \
-    --bags doubleT_obstacle --variant final_b2 --out "output/Opus 5.5/speed/real"
+    --bags doubleT_obstacle --variant low_rest_b0 --out "output/Opus 5.5/speed/real"
 python make_far_gifs.py --dataset output/new_synth --bags cloud_with_fake_obj --target-frames 250
 
 # мерило обнаружения на кэше: дальность, непрерывность, ложные (кэш — exp_far_cache.py)
-python exp_far_eval.py --summary --variants base final final_b2
-python exp_far_mirror.py --variant final_b2          # зеркальная проверка находок
+python exp_far_eval.py --summary --variants low_rest_b0
+python exp_far_mirror.py --variant low_rest_b0       # зеркальная проверка находок
 python exp_far_vprof.py                              # свод предсказывает пол? (профиль по высоте)
 
 # «ответ тот же» после правки кода конвейера — эталон текущего кода (§38–§39)
-python exp_speed.py check --all --golden output/exp22_golden --variants final low_rest_b0 --jobs 6
-python exp_speed.py check --all --golden output/exp22_golden --variants final low_rest_b0 --jobs 3 --workers 4 --process
+python exp_speed.py check --all --golden output/exp22_golden --variants low_rest_b0 --jobs 6
+python exp_speed.py check --all --golden output/exp22_golden --variants low_rest_b0 --jobs 3 --workers 4 --process
 python exp_speed.py bench --label my --workers 4 --process   # время кадра по стадиям
-python exp_speed.py plot --label ref,final_w4p --names "до,после"
+python exp_speed.py plot --label ref,low_rest_b0_w4p --names "до,после"
 ```
 
 Ранние методы (история, §15–§33):

@@ -48,7 +48,7 @@ def episodes(ks):
 
 def main():
     a = argparse.ArgumentParser()
-    a.add_argument("--variant", default="final")
+    a.add_argument("--variant", default="low_rest_b0")
     a.add_argument("--bags", nargs="+", default=BAGS)
     a.add_argument("--orig", default="output/exp18_cache/Dataset")
     a.add_argument("--mirror", default="output/exp18_cache/reversed")

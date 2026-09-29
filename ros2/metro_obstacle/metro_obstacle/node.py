@@ -13,10 +13,11 @@
   /obstacle/gauge_points   sensor_msgs/PointCloud2  точки, попавшие в габарит
   /obstacle/cloud_preview  sensor_msgs/PointCloud2  прореженное входное облако
 
-Кадры обрабатываются в отдельном потоке. queue=latest (по умолчанию) — берётся
-самый свежий кадр, пропущенные учитываются при поиске Δs, задержка не растёт;
-queue=all — обрабатываются все кадры по порядку (ответ как при разборе записи
-целиком; при медленной обработке проигрывать запись с --rate < 1).
+Кадры обрабатываются в отдельном потоке. queue=all (по умолчанию) — все кадры
+по порядку, ни один не пропускается (ответ как при разборе записи целиком); если
+кадр обрабатывается дольше периода лидара, кадры ждут в очереди и задержка
+растёт. queue=latest — берётся самый свежий кадр, пропущенные учитываются при
+поиске Δs, задержка не растёт (режим для работы на поезде).
 """
 
 import array
@@ -81,7 +82,7 @@ class ObstacleNode(Node):
         super().__init__("obstacle_detector")
         self.declare_parameter("topic", "auto")
         self.declare_parameter("variant", DEFAULT_VARIANT)
-        self.declare_parameter("queue", "latest")          # latest | all
+        self.declare_parameter("queue", "all")             # all | latest
         self.declare_parameter("preview_stride", 10)       # 0 — не публиковать облако
         self.declare_parameter("log_file", "")             # JSON Lines по кадрам
         self.declare_parameter("reset_gap", 2.0)           # с: пауза в потоке — новая запись
@@ -139,7 +140,10 @@ class ObstacleNode(Node):
             self._subscribe(topic)
 
     def _subscribe(self, topic):
-        qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10,
+        # queue=all: очередь DDS на 10 с потока — пока поток приёма ждёт своей
+        # очереди (обработка кадра держит интерпретатор), кадры не вытесняются
+        qos = QoSProfile(history=HistoryPolicy.KEEP_LAST,
+                         depth=100 if self.queue_mode == "all" else 10,
                          reliability=ReliabilityPolicy.RELIABLE)
         self.subs[topic] = self.create_subscription(
             PointCloud2, topic, lambda m, t=topic: self._on_cloud(m, t), qos)
@@ -243,6 +247,7 @@ class ObstacleNode(Node):
         else:
             state = f"путь свободен (видно до {out['limit']:.0f} м)"
         extra = f", пропущено {out['skipped']}" if out["skipped"] else ""
+        extra += f", в очереди {out['backlog']}" if out["backlog"] else ""
         self.get_logger().info(f"кадр {out['frame']}: {state} — "
                                f"{out['proc_ms']:.0f} мс{extra}")
 
@@ -252,8 +257,9 @@ class ObstacleNode(Node):
         colour = RED if out["detected"] else GREEN
         life = Duration(sec=1)
 
-        # крупная надпись над путём впереди лидара — ответ кадра; латиницей:
-        # шрифт сцены RViz2 (Ogre) кириллицу не рисует
+        # крупная надпись впереди лидара слева от пути — ответ кадра (не над
+        # путём: там она закрывает препятствие); латиницей: шрифт сцены RViz2
+        # (Ogre) кириллицу не рисует
         if not out["ok"]:
             head, hc = "NO TRACK", WHITE
         elif out["detected"]:
@@ -262,7 +268,7 @@ class ObstacleNode(Node):
             head, hc = f"CLEAR to {out['limit']:.0f} m", GREEN
         hud = Marker(header=header, ns="status", id=0, type=Marker.TEXT_VIEW_FACING,
                      action=Marker.ADD, lifetime=life, color=hc, text=head)
-        hud.pose.position.y, hud.pose.position.z = -15.0, 6.0
+        hud.pose.position.x, hud.pose.position.y, hud.pose.position.z = -6.0, -30.0, 6.0
         hud.pose.orientation.w = 1.0
         hud.scale.z = 2.0
         arr.markers.append(hud)
