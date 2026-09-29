@@ -19,7 +19,6 @@ ROS 2 Humble).
 
 - код решения: https://github.com/ValeraYakovlev/LIDAR
 - синтетические данные: https://1drv.ms/f/c/987026c55c0e6b38/IgC_FFXqWiI9RqhisNYGjpi5AVt6zPgd44a-L0Zkqh2rdiw?e=CGrZGe
-- отчёт, презентация и видео работы: https://disk.360.yandex.ru/d/KVTwAleJs3k7IQ
 
 ---
 

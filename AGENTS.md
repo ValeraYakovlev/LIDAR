@@ -118,8 +118,7 @@ python exp20_eval.py --stats "<папка прогона>/last_synth" --false
   Теги: `wall-parallel-v1`, `far-detection-v1`, `speed-ref`, `double-track-v1`,
   `speed-exact-ref`, `numba-ref`.
 - Работа AnRiChie (ML, XGBoost) — отдельные ветки на GitHub, в `main` не входит.
-- Отчёт, презентация и видео — не в репозитории: `Presentation and report/` (локально) и
-  Яндекс Диск (ссылка в README).
+- Отчёт, презентация и видео — не в репозитории (локально — `Presentation and report/`).
 - Не сделано по ТЗ: замер на стенде (i7-9700E). Видео работы —
   `scripts/vm.sh video <запись>` (живой прогон на ВМ, запись экрана RViz2).
 - FINAL_STEP (`/Volumes/T7/FINAL_STEP/mix3`, 2026-09-29; в материалах для жюри —
