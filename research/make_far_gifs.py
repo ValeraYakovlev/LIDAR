@@ -437,7 +437,7 @@ def main():
     a = argparse.ArgumentParser()
     a.add_argument("--dataset", default="/Volumes/T7/Dataset")
     a.add_argument("--bags", nargs="+", required=True)
-    a.add_argument("--variant", default="final")
+    a.add_argument("--variant", default="low_rest_b0")
     a.add_argument("--out", default=f"output/{FOLDER}")
     a.add_argument("--target-frames", type=int, default=130)
     a.add_argument("--max-frames", type=int, default=None)

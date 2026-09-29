@@ -19,7 +19,7 @@ from rail_detection.contrast_gauge import path_at
 from rail_detection.loader import to_points
 from rail_detection.parallel_path import ParallelGauge
 
-DEFAULT_VARIANT = "final"
+DEFAULT_VARIANT = "low_rest_b0"
 CORRIDOR_STEP = 2.0      # м: шаг по глубине, с которым рисуется коридор габарита
 
 

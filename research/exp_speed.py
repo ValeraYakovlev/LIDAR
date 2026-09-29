@@ -250,7 +250,7 @@ def _instrument(log):
     far_detect.FarDetector.update = wrap(far_detect.FarDetector.update, "детектор 18")
 
 
-def bench(label, bags, n_frames, workers=1, process=False):
+def bench(label, bags, n_frames, workers=1, process=False, variant="low_rest_b0"):
     from rail_detection import bag_path, iter_frames
     from rail_detection import parallel as par
     par.set_workers(workers)
@@ -271,11 +271,12 @@ def bench(label, bags, n_frames, workers=1, process=False):
         cpu = next((ln.split(":", 1)[1].strip() for ln in open("/proc/cpuinfo")
                     if ln.startswith("model name")), "")
     cpu = cpu or platform.processor()
-    out = {"label": label, "cpu": cpu, "workers": workers, "process": process, "bags": {}}
+    out = {"label": label, "cpu": cpu, "workers": workers, "process": process, "variant": variant,
+           "bags": {}}
     for dataset, bag in bags:
         frames = [p.copy() for _, p, _ in iter_frames(bag_path(dataset, bag), max_frames=n_frames)]
         pg = ParallelGauge()
-        det = fd.FarDetector(fd.VARIANTS["final"])
+        det = fd.FarDetector(fd.VARIANTS[variant])
         per = []
         for k, p in enumerate(frames):
             log.clear()
@@ -388,6 +389,7 @@ def main():
     a.add_argument("--jobs", type=int, default=5)
     a.add_argument("--label", default="ref")
     a.add_argument("--bench-frames", type=int, default=105)
+    a.add_argument("--bench-variant", default="low_rest_b0", help="bench: вариант детектора")
     a.add_argument("--bench-bags", nargs="*", default=None,
                    help="bench: записи как «папка:запись» (по умолчанию — три записи §35 на T7)")
     a.add_argument("--workers", type=int, default=1, help="потоков на кадр (1 — последовательно)")
@@ -398,7 +400,7 @@ def main():
     args = a.parse_args()
     if args.mode == "bench":
         bags = [tuple(x.rsplit(":", 1)) for x in args.bench_bags] if args.bench_bags else BENCH_BAGS
-        bench(args.label, bags, args.bench_frames, args.workers, args.process)
+        bench(args.label, bags, args.bench_frames, args.workers, args.process, args.bench_variant)
         return
     if args.mode == "plot":
         labels = args.label.split(",")

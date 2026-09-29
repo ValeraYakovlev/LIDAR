@@ -3,7 +3,7 @@
 Нужен для замеров (каждый кадр по порядку, ответ не зависит от скорости машины)
 и для сверки узла: узел с queue=all должен дать те же находки.
 
-    metro_offline /bags/doubleT_obstacle --variant final --out /out/doubleT_obstacle.jsonl
+    metro_offline /bags/doubleT_obstacle --variant low_rest_b0 --out /out/doubleT_obstacle.jsonl
 """
 
 import argparse
